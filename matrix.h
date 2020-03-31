@@ -3,11 +3,9 @@
 // if memory becomes a constraint, make the cols, rows, keymap and keyset dynamic to reclaim space from small matrixes
 const short MAX_COLS = 6;
 const short MAX_ROWS = 5;
-const short MAGIC_DEBOUNCE_NUMBER = 2;
+const short MAGIC_DEBOUNCE_NUMBER = 3;
 
 const short KEY_OVERLAY_1 = 1;
-
-const char* VERSION = "0.0.0.1";
 
 #define DEBUG true
  #ifdef DEBUG
@@ -21,7 +19,7 @@ char* debugBuffer = 0;
 struct Matrix {
   char columns[MAX_COLS];
   char rows[MAX_ROWS];
-  char keymap[MAX_COLS][MAX_ROWS];
+  unsigned char keymap[MAX_COLS][MAX_ROWS];
   short keyset[MAX_COLS][MAX_ROWS];
   char overlayPressed[MAX_COLS][MAX_ROWS];
   short columnCount;
@@ -63,18 +61,33 @@ void pressKeyImpl(char key) {
   #endif
 }
 
-void pressKey(Matrix* m, short col, short row) {
+void pressKey(Matrix* m, short matrixIndex, short col, short row) {
   if (enableOverlay != 0) {
     // if this isnt handled, let the original key go through
-    char overlayKey = *overlays[enableOverlay-1].keymap[col][row];
-    m->overlayPressed[col][row] = enableOverlay;
-    pressKeyImpl(overlayKey);
-    return;
+    unsigned char overlayKey = overlays[enableOverlay-1].keymap[matrixIndex][col][row];
+    if (overlayKey > 0) {
+#ifdef DEBUG
+sprintf(debugBuffer, "overlay: key: %d %d, %d for matrix %s", overlayKey, col, row, m->name);
+log(debugBuffer);
+#endif
+      m->overlayPressed[col][row] = enableOverlay;
+      pressKeyImpl(overlayKey);
+      return;
+    } else {
+#ifdef DEBUG
+sprintf(debugBuffer, "no overlay (%d enabled): %d, %d overlaykey %d for matrix %s", enableOverlay, col, row, overlayKey, m->name);
+log(debugBuffer);
+#endif
+    }
   }
   char key = m->keymap[col][row];
   if (key == KEY_OVERLAY_1) {
     // enable this overlay
     enableOverlay = key;
+#ifdef DEBUG
+sprintf(debugBuffer, "enable overlay %d", enableOverlay);
+log(debugBuffer);
+#endif
     return;
   }
   pressKeyImpl(key);
@@ -89,27 +102,36 @@ void unpressKeyImpl(char key) {
   #endif
 }
 
-void unpressKey(Matrix* m, short col, short row) {
+void unpressKey(Matrix* m, short matrixIndex, short col, short row) {
   if (m->overlayPressed[col][row] != 0) {
     // unpress overlay key instead
     short overlay = m->overlayPressed[col][row];
-    char overlayKey = *overlays[overlay-1].keymap[col][row];
+    unsigned char overlayKey = overlays[overlay-1].keymap[matrixIndex][col][row];
     unpressKeyImpl(overlayKey);
     m->overlayPressed[col][row] = 0;
     m->keyset[col][row] = 0;
     return;
   }
-  char key = m->keymap[col][row];
+  unsigned char key = m->keymap[col][row];
   if (key == KEY_OVERLAY_1) {
     // disable this overlay
+#ifdef DEBUG
+sprintf(debugBuffer, "disable overlay %d", enableOverlay);
+log(debugBuffer);
+#endif
     enableOverlay = 0;
+  } else if (key == 0) {
+#ifdef DEBUG
+sprintf(debugBuffer, "key missing %d %d mx %s", col, row, m->name);
+log(debugBuffer);
+#endif
   } else {
     unpressKeyImpl(key);
   }
   m->keyset[col][row] = 0;
 }
 
-void processOne(Matrix* m, short index) {
+void processOne(Matrix* m, short matrixIndex, short index) {
   char* high = m->rows;
   char* low = m->columns;
   if (!m->rowDriven) {
@@ -167,10 +189,10 @@ log(debugBuffer);
         m->keyset[column][row] = 2;
       }
       if (m->keymap[column][row] != 0 && m->keyset[column][row] == 1) {
-        pressKey(m, column, row);
 #ifdef DEBUG
-sprintf(debugBuffer, "pos: %d, %d for matrix %s", column, row, m->name);
+sprintf(debugBuffer, "keypress: %d, %d for matrix %s", column, row, m->name);
 log(debugBuffer);
+        pressKey(m, matrixIndex, column, row);
 #endif
       } else if (m->keymap[column][row] == 0) {
 #ifdef DEBUG
@@ -185,7 +207,7 @@ log(debugBuffer);
       }
     // Only unpress a key if it's been held long enough (swap this if keys ghost a lot)
     } else if (m->keyset[column][row] > MAGIC_DEBOUNCE_NUMBER) {
-      unpressKey(m, column, row);
+      unpressKey(m, matrixIndex, column, row);
     }
   }
   // Set column low
@@ -196,9 +218,9 @@ log(debugBuffer);
   }
 }
 
-void process(Matrix* m) {
+void process(Matrix* m, short matrixIndex) {
   short matrixMax = m->rowDriven ? m->rowCount : m->columnCount;
   for (short i = 0; i < matrixMax; ++i) {
-    processOne(m, i);
+    processOne(m, matrixIndex, i);
   }
 }
