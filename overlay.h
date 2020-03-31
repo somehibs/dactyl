@@ -11,12 +11,13 @@ void clearOverlay(Overlay* o) {
 Overlay* overlay_right(Overlay* a) {
   clearOverlay(a);
   // top row
-  a->keymap[M_RIGHT_MAIN][0][0] = KEY_F7;
-  a->keymap[M_RIGHT_MAIN][1][0] = KEY_F8;
-  a->keymap[M_RIGHT_MAIN][2][0] = KEY_F9;
-  a->keymap[M_RIGHT_MAIN][3][0] = KEY_F10;
-  a->keymap[M_RIGHT_MAIN][4][0] = KEY_F11;
-  a->keymap[M_RIGHT_MAIN][5][0] = KEY_F12;
+  a->keymap[M_RIGHT_MAIN][0][0] = KEY_F6;
+  a->keymap[M_RIGHT_MAIN][1][0] = KEY_F7;
+  a->keymap[M_RIGHT_MAIN][2][0] = KEY_F8;
+  a->keymap[M_RIGHT_MAIN][3][0] = KEY_F9;
+  a->keymap[M_RIGHT_MAIN][4][0] = KEY_F10;
+  a->keymap[M_RIGHT_MAIN][5][0] = KEY_F11;
+  a->keymap[M_RIGHT_MAIN][5][1] = KEY_F12;
   // 6 floating keys
   a->keymap[M_RIGHT_MAIN][1][1] = KEY_INSERT;
   a->keymap[M_RIGHT_MAIN][2][1] = KEY_HOME;

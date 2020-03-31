@@ -78,6 +78,7 @@ log(debugBuffer);
 sprintf(debugBuffer, "no overlay (%d enabled): %d, %d overlaykey %d for matrix %s", enableOverlay, col, row, overlayKey, m->name);
 log(debugBuffer);
 #endif
+      return; // suppress fallthrough keypresses when the overlay isn't bound to fix confusing keypress issues
     }
   }
   char key = m->keymap[col][row];
