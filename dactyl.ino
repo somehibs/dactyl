@@ -1,4 +1,3 @@
-
 // caveats
 // cannot send 0 because it's used internally as 'no key assigned'
 
@@ -10,12 +9,12 @@ const short MATRIX_COUNT = 4;
 #define RXLED = 17;
 #define TXLED = 30;
 
-const char* VERSION = "1.0.0.6";
+const char* VERSION = "1.0.0.9";
 Matrix matricies[MATRIX_COUNT];
 
 void safetyDelay() {
   Serial.println("Beginning startup safety delay.");
-  for (int i = 15; i > 0; --i) {
+  for (int i = 12; i > 0; --i) {
     Serial.println("Wait a sec...");
     delay(1000);
   }
@@ -24,11 +23,16 @@ void safetyDelay() {
 
 void setup() {
   Serial.begin(9600);
-  safetyDelay();
-  ioexp.begin();
+  //safetyDelay();
+  while (!ioexp.begin()) {
+    // Malfunction starting second half of keyboard
+    Serial.println("Could not init left deck");
+    delay(750);
+  }
   Serial.write("FW: ");
   Serial.println(VERSION);
   #ifdef REAL_KEYBOARD
+  delay(500); // windows keyboard corruption startup delay
   Keyboard.begin();
   #endif
   init_matrix();
@@ -42,14 +46,23 @@ void init_matrix() {
   matricies[M_LEFT_MAIN] = main_matrix_left();
   matricies[3] = thumb_matrix_left();
   for (int i = 0; i < MATRIX_COUNT; i++) {
-    if (matricies[i].remote) {
-      Matrix* m = matricies + i;
-      // clear the inversion registers (you might need to edit the adafruit library)
-      ioexp.writeRegister(MCP23017_IPOLA, 0x0);
-      ioexp.writeRegister(MCP23017_IPOLB, 0x0);
-      for (int j = 0; j < m->rowCount; ++j) {
-        
+    Matrix* m = matricies + i;
+    // configure the read pins as pullup high to prevent floating
+    for (int j = 0; j < (m->rowDriven ? m->columnCount : m->rowCount); ++j) {
+      short pin = m->rowDriven ? m->columns[j] : m->rows[j];
+      if (pin != -1) {
+        if (m->remote) {
+          ioexp.pullUp(pin, HIGH);
+        } else {
+          pinMode(pin, INPUT_PULLUP);
+          //pullUp(pin, HIGH);
+        }
       }
+    }
+    if (matricies[i].remote) {
+      // clear the inversion registers (you might need to edit the adafruit library)
+      ioexp.writeRegister(MCP23017_IPOLA, 0x00);
+      ioexp.writeRegister(MCP23017_IPOLB, 0x00);
     }
   }
 }
@@ -64,11 +77,28 @@ void init_overlay() {
 void loop() {
   for (short xi = 0; xi < MATRIX_COUNT; ++xi) {
     process(matricies+xi, xi);
-    //halter();
   }
 }
 
 void halter() {
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
+  delay(100);
   delay(100);
   delay(100);
   delay(100);

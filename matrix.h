@@ -56,8 +56,15 @@ void pressKeyImpl(char key) {
 #ifdef REAL_KEYBOARD
   Keyboard.press(key);
 #else
+
+#ifdef DEBUG
+      sprintf(debugBuffer, "Key pressed: %c (%d)", key, key);
+      log(debugBuffer);
+#else
   Serial.write("Key pressed: ");
   Serial.println(key);
+      
+#endif
 #endif
 }
 
@@ -171,15 +178,12 @@ void processOne(Matrix* m, short matrixIndex, short index) {
     // Read the low pin
     bool read = false;
     if (!m->remote) {
-      pinMode(low[i], INPUT_PULLUP);
       bool notRead = digitalRead(low[i]);
       read = !notRead;
-      pinMode(low[i], INPUT);
     } else {
-      //bool notRead = ioexp.digitalRead(low[i]);
+      //bool notRead = ioexp.digitalRead(low[i]); // deprecated in favour of faster all-row read method
       byte readByte = (allRead >> low[i]) & 0x1;
       read = !readByte;
-      //ioexp.pullUp(low[i], LOW);
     }
 
     // Process the read result

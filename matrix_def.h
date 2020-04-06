@@ -128,7 +128,7 @@ Matrix thumb_matrix_left() { // alt, space, shift, dunno top right three yet
   a.columns[0] = 5;
   a.columns[1] = 6;
   a.columns[2] = 7;
-  a.keymap[1][0] = '1';
+  a.keymap[1][0] = KEY_LEFT_SHIFT;
   a.keymap[0][1] = KEY_OVERLAY_1;
   a.keymap[0][0] = KEY_LEFT_ALT;
   a.keymap[1][1] = KEY_BACKSPACE;
