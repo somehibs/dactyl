@@ -1,23 +1,13 @@
 #define REAL_KEYBOARD
 
-// if memory becomes a constraint, make the cols, rows, keymap and keyset dynamic to reclaim space from small matrixes
 const short MAX_COLS = 6;
 const short MAX_ROWS = 5;
 const short MAGIC_DEBOUNCE_NUMBER = 0;
 
 const short KEY_OVERLAY_1 = 1;
 
-#ifdef WATCHDOG_ENABLED
-#include <avr/wdt.h>
-short watchdogLatch = 0;
-#endif
-
-#define DEBUG true
-#ifdef DEBUG
-char* debugBuffer = new char[512];
-#else
-char* debugBuffer = 0;
-#endif
+//#define DEBUG true
+char* debugBuffer = new char[64];
 
 #include "overlay.h"
 
@@ -49,27 +39,40 @@ void clearMatrix(Matrix* a) {
   a->rowDriven = true;
 }
 
-void log(char* logLine) {
-  if (!DEBUG) {
-    return;
+void configure_matrix(Matrix* m) {
+  // configure the read pins as pullup high to prevent floating
+  for (int i = 0; i < (m->rowDriven ? m->columnCount : m->rowCount); ++i) {
+    short pin = m->rowDriven ? m->columns[i] : m->rows[i];
+    if (pin != -1) {
+      if (m->remote) {
+        ioexp.pullUp(pin, HIGH);
+      } else {
+        pinMode(pin, INPUT_PULLUP);
+      }
+    }
   }
-  Serial.println(logLine);
 }
+
+#ifdef DEBUG
+void log(char* fmt, ...) {
+  va_list argp;
+  va_start(argp, fmt);
+  vsprintf(debugBuffer, fmt, argp);
+  va_end(argp);
+  Serial.println(debugBuffer);
+}
+#else
+inline void log(char* _, ...) {
+  // Do nothing
+}
+#endif
 
 
 void pressKeyImpl(char key) {
 #ifdef REAL_KEYBOARD
   Keyboard.press(key);
 #else
-
-#ifdef DEBUG
-      sprintf(debugBuffer, "Key pressed: %c (%d)", key, key);
-      log(debugBuffer);
-#else
-  Serial.write("Key pressed: ");
-  Serial.println(key);
-      
-#endif
+  log("Key pressed: %c (%d)", key, key);
 #endif
 }
 
@@ -78,18 +81,12 @@ void pressKey(Matrix* m, short matrixIndex, short col, short row) {
     // if this isnt handled, let the original key go through
     unsigned char overlayKey = overlays[enableOverlay - 1].keymap[matrixIndex][col][row];
     if (overlayKey > 0) {
-#ifdef DEBUG
-      sprintf(debugBuffer, "overlay: key: %d %d, %d for matrix %s", overlayKey, col, row, m->name);
-      log(debugBuffer);
-#endif
+      log("overlay: key: %d %d, %d for matrix %s", overlayKey, col, row, m->name);
       m->overlayPressed[col][row] = enableOverlay;
       pressKeyImpl(overlayKey);
       return;
     } else {
-#ifdef DEBUG
-      sprintf(debugBuffer, "no overlay (%d enabled): %d, %d overlaykey %d for matrix %s", enableOverlay, col, row, overlayKey, m->name);
-      log(debugBuffer);
-#endif
+      log("no overlay (%d enabled): %d, %d overlaykey %d for matrix %s", enableOverlay, col, row, overlayKey, m->name);
       //return; // suppress fallthrough keypresses when the overlay isn't bound to fix confusing keypress issues
     }
   }
@@ -97,10 +94,7 @@ void pressKey(Matrix* m, short matrixIndex, short col, short row) {
   if (key == KEY_OVERLAY_1) {
     // enable this overlay
     enableOverlay = key;
-#ifdef DEBUG
-    sprintf(debugBuffer, "enable overlay %d", enableOverlay);
-    log(debugBuffer);
-#endif
+    log("enable overlay %d", enableOverlay);
     return;
   }
   pressKeyImpl(key);
@@ -112,6 +106,23 @@ void unpressKeyImpl(char key) {
 #else
   Serial.write("Key unpressed: ");
   Serial.println(key);
+#endif
+}
+
+
+#ifdef WATCHDOG_ENABLED
+#include <avr/wdt.h>
+#endif
+void remoteIoFailed() {
+  Serial.write("Bad remote IO call reply");
+#ifdef WATCHDOG_ENABLED
+  Serial.println(" system halt!");
+  wdt_enable(WDTO_15MS);
+  while(1) {
+    delay(1);
+  }
+#else
+  Serial.println(" watchdog disabled - no action");
 #endif
 }
 
@@ -127,24 +138,29 @@ void unpressKey(Matrix* m, short matrixIndex, short col, short row) {
   }
   unsigned char key = m->keymap[col][row];
   if (key == KEY_OVERLAY_1) {
-    // disable this overlay
-#ifdef DEBUG
-    sprintf(debugBuffer, "disable overlay %d", enableOverlay);
-    log(debugBuffer);
-#endif
+    log("disable overlay %d", enableOverlay);
     enableOverlay = 0;
   } else if (key == 0) {
-#ifdef DEBUG
-    sprintf(debugBuffer, "key missing %d %d mx %s", col, row, m->name);
-    log(debugBuffer);
-#endif
+    log("key missing %d %d mx %s", col, row, m->name);
   } else {
     unpressKeyImpl(key);
   }
   m->keyset[col][row] = 0;
 }
 
+// saves passing an arg around
+uint16_t allRows = 0;
+inline bool readPin(short pin, bool remote) {
+  if (!remote) {
+    //return !ioexp.digitalRead(low[i]); // deprecated in favour of faster all-row read method
+    return !((allRows >> pin) & 0x1);
+  } else {
+    return !digitalRead(pin);
+  }
+}
+
 void processOne(Matrix* m, short matrixIndex, short index) {
+  // Point to rows and cols depending on drive type
   char* high = m->rows;
   char* low = m->columns;
   if (!m->rowDriven) {
@@ -152,38 +168,30 @@ void processOne(Matrix* m, short matrixIndex, short index) {
     low = m->rows;
   }
 
+  // Sanity check
   if (high[index] == -1) {
-#ifdef DEBUG
-    sprintf(debugBuffer, "High %d missing from matrix %s", index, m->name);
-    log(debugBuffer);
-#endif
+    log("High %d missing from matrix %s", index, m->name);
     return;
   }
 
+  // Set high
   if (!m->remote) {
     pinMode(high[index], OUTPUT);
     digitalWrite(high[index], LOW);
   } else {
     bool reply = ioexp.pinMode(high[index], OUTPUT);
     if (!reply) {
-#ifdef DEBUG
-    sprintf(debugBuffer, "Bad reply (wdl: %d)", watchdogLatch);
-    log(debugBuffer);
-#endif
-      wdt_enable(WDTO_15MS);
-      while(1) {
-        delay(1);
-      }
+      remoteIoFailed();
     }
     ioexp.digitalWrite(high[index], LOW);
   }
-  // Read rows
+  
+  // Prepare to read rows and act on col/row lookups
   short column = index;
   short row = index; // will be corrected in loop
-  uint16_t allRead = 0;
   if (m->remote) {
-    // read all the pins now to make for faster loops, hopefully meaning a more responsive keyboard because there's not 6 requests for something that can come back from one
-    allRead = ioexp.readGPIOAB();
+    // read all the pins now
+    allRows = ioexp.readGPIOAB();
   }
   for (short i = 0; i < (m->rowDriven ? m->columnCount : m->rowCount); ++i) {
     if (low[i] == -1) {
@@ -191,15 +199,7 @@ void processOne(Matrix* m, short matrixIndex, short index) {
     }
 
     // Read the low pin
-    bool read = false;
-    if (!m->remote) {
-      bool notRead = digitalRead(low[i]);
-      read = !notRead;
-    } else {
-      //bool notRead = ioexp.digitalRead(low[i]); // deprecated in favour of faster all-row read method
-      byte readByte = (allRead >> low[i]) & 0x1;
-      read = !readByte;
-    }
+    bool read = readPin(low[i], m->remote);
 
     // Process the read result
     if (m->rowDriven) {
@@ -208,26 +208,20 @@ void processOne(Matrix* m, short matrixIndex, short index) {
       row = i;
     }
     if (read) {
+      // Key is held, add to keyset value
       m->keyset[column][row] += 1;
       if (m->keyset[column][row] == 32766) {
         // nearly at short wraparound, jump back to 2
         m->keyset[column][row] = 2;
       }
       if (m->keymap[column][row] != 0 && m->keyset[column][row] == 1) {
-#ifdef DEBUG
-        sprintf(debugBuffer, "keypress: %d, %d allread %u for matrix %s", column, row, allRead, m->name);
-        log(debugBuffer);
+        log("keypress: %d, %d allread %u for matrix %s", column, row, allRows, m->name);
         pressKey(m, matrixIndex, column, row);
-#endif
       } else if (m->keymap[column][row] == 0) {
-#ifdef DEBUG
-        sprintf(debugBuffer, "Could not read key for col %d and row %d for matrix %s", column, row, m->name);
-        log(debugBuffer);
-#endif
+        log("Could not read key for col %d and row %d for matrix %s", column, row, m->name);
       } else {
 #ifdef VERBOSE
-        sprintf(debugBuffer, "pos %d %d c %d mx %s", column, row, m->keyset[column][row], m->name);
-        log(debugBuffer);
+        log("pos %d %d c %d mx %s", column, row, m->keyset[column][row], m->name);
 #endif
       }
       // Only unpress a key if it's been held long enough (swap this if keys ghost a lot)
@@ -243,6 +237,7 @@ void processOne(Matrix* m, short matrixIndex, short index) {
   }
 }
 
+// Process each row/column
 void process(Matrix* m, short matrixIndex) {
   short matrixMax = m->rowDriven ? m->rowCount : m->columnCount;
   for (short i = 0; i < matrixMax; ++i) {

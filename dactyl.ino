@@ -1,7 +1,6 @@
 // caveats
 // cannot send 0 because it's used internally as 'no key assigned'
 #define WATCHDOG_ENABLED
-#define WATCHDOG_MAX 300
 
 #include <Keyboard.h>
 
@@ -17,7 +16,7 @@ const short MATRIX_COUNT = 4;
 #define RXLED 17
 #define TXLED 30
 
-const char* VERSION = "1.0.3.1";
+const char* VERSION = "1.0.3.2";
 Matrix matricies[MATRIX_COUNT];
 
 void safetyDelay() {
@@ -38,9 +37,11 @@ void setup() {
 #endif // WATCHDOG_ENABLED
   Serial.begin(9600);
   //safetyDelay();
+  // May be used instead of safety delay to delay startup - useful now that a watchdog timer prevents reflashing otherwise
   while (!ioexp.begin()) {
-    // Malfunction starting second half of keyboard
-    Serial.println("Could not init left deck");
+    Serial.write("Could not init left deck (FW: ");
+    Serial.write(VERSION);
+    Serial.println(")");
     delay(750);
   }
   Serial.write("FW: ");
@@ -60,23 +61,7 @@ void init_matrix() {
   matricies[3] = thumb_matrix_left();
   for (int i = 0; i < MATRIX_COUNT; i++) {
     Matrix* m = matricies + i;
-    // configure the read pins as pullup high to prevent floating
-    for (int j = 0; j < (m->rowDriven ? m->columnCount : m->rowCount); ++j) {
-      short pin = m->rowDriven ? m->columns[j] : m->rows[j];
-      if (pin != -1) {
-        if (m->remote) {
-          ioexp.pullUp(pin, HIGH);
-        } else {
-          pinMode(pin, INPUT_PULLUP);
-          //pullUp(pin, HIGH);
-        }
-      }
-    }
-//    if (matricies[i].remote) {
-//      // clear the inversion registers (you might need to edit the adafruit library)
-//      ioexp.writeRegister(MCP23017_IPOLA, 0x00);
-//      ioexp.writeRegister(MCP23017_IPOLB, 0x00);
-//    }
+    configure_matrix(m);
   }
 }
 
@@ -89,11 +74,7 @@ void init_overlay() {
 
 void loop() {
 #ifdef WATCHDOG_ENABLED
-  // Instead of reading the documentation or properly considering how to use wdt_enable, I'm using this latch to avoid enabling the watchdog until enough time for a reset has passed
-  watchdogLatch += 1;
-  if (watchdogLatch > WATCHDOG_MAX) {
-    wdt_enable(WDTO_250MS);
-  }
+  wdt_enable(WDTO_250MS); // col/row process shouldn't take longer than 250ms
 #endif // WATCHDOG_ENABLED
   for (short xi = 0; xi < MATRIX_COUNT; ++xi) {
     process(matricies+xi, xi);
