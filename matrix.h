@@ -7,6 +7,11 @@ const short MAGIC_DEBOUNCE_NUMBER = 0;
 
 const short KEY_OVERLAY_1 = 1;
 
+#ifdef WATCHDOG_ENABLED
+#include <avr/wdt.h>
+short watchdogLatch = 0;
+#endif
+
 #define DEBUG true
 #ifdef DEBUG
 char* debugBuffer = new char[512];
@@ -159,7 +164,17 @@ void processOne(Matrix* m, short matrixIndex, short index) {
     pinMode(high[index], OUTPUT);
     digitalWrite(high[index], LOW);
   } else {
-    ioexp.pinMode(high[index], OUTPUT);
+    bool reply = ioexp.pinMode(high[index], OUTPUT);
+    if (!reply) {
+#ifdef DEBUG
+    sprintf(debugBuffer, "Bad reply (wdl: %d)", watchdogLatch);
+    log(debugBuffer);
+#endif
+      wdt_enable(WDTO_15MS);
+      while(1) {
+        delay(1);
+      }
+    }
     ioexp.digitalWrite(high[index], LOW);
   }
   // Read rows
