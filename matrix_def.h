@@ -61,6 +61,7 @@ Matrix thumb_matrix_right() {
   a.keymap[1][0] = KEY_RIGHT_SHIFT;
   a.keymap[1][1] = KEY_RETURN;
   a.keymap[2][0] = KEY_RIGHT_CTRL;
+  a.keymap[2][1] = ' ';
   a.columnCount = 3; 
   a.rowCount = 2;
   a.name = "thumb_right";
@@ -88,7 +89,7 @@ Matrix main_matrix_left() {
   a.keymap[0][1] = KEY_TAB;
   a.keymap[0][2] = KEY_ESC;
   a.keymap[0][3] = KEY_LEFT_SHIFT;
-  a.keymap[0][4] = '9';
+  a.keymap[0][4] = KEY_LEFT_GUI;
   a.keymap[1][0] = '1';
   a.keymap[1][1] = 'q';
   a.keymap[1][2] = 'a';

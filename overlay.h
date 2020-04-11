@@ -33,7 +33,7 @@ Overlay* overlay_main(Overlay* a) {
   a->keymap[M_RIGHT_MAIN][3][3] = KEY_UP_ARROW;
   a->keymap[M_RIGHT_MAIN][4][3] = KEY_RIGHT_ARROW;
   // top row
-  a->keymap[M_LEFT_MAIN][0][0] = '`';
+  a->keymap[M_LEFT_MAIN][0][0] = KEY_MOUSE_LEFT;
   a->keymap[M_LEFT_MAIN][1][0] = KEY_F1;
   a->keymap[M_LEFT_MAIN][2][0] = KEY_F2;
   a->keymap[M_LEFT_MAIN][3][0] = KEY_F3;

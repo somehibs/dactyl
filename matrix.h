@@ -1,12 +1,13 @@
 #define REAL_KEYBOARD
+//#define DEBUG true
 
 const short MAX_COLS = 6;
 const short MAX_ROWS = 5;
 const short MAGIC_DEBOUNCE_NUMBER = 0;
-
+// dead keys 28-31
 const short KEY_OVERLAY_1 = 1;
+const short KEY_MOUSE_LEFT = 28;
 
-//#define DEBUG true
 char* debugBuffer = new char[64];
 
 #include "overlay.h"
@@ -24,6 +25,8 @@ struct Matrix {
   // at the other end of MCP23017, use ioexp instead of digitalWrite directly
   bool remote;
 };
+
+
 
 Overlay* overlays = 0;
 short enableOverlay = 0;
@@ -68,11 +71,14 @@ inline void log(char* _, ...) {
 #endif
 
 
+#include <Mouse.h>
 void pressKeyImpl(char key) {
+  if (key == KEY_MOUSE_LEFT) {
+    Mouse.click();
+    return;
+  }
 #ifdef REAL_KEYBOARD
   Keyboard.press(key);
-#else
-  log("Key pressed: %c (%d)", key, key);
 #endif
 }
 
@@ -101,11 +107,11 @@ void pressKey(Matrix* m, short matrixIndex, short col, short row) {
 }
 
 void unpressKeyImpl(char key) {
+  if (key == KEY_MOUSE_LEFT) {
+    return;
+  }
 #ifdef REAL_KEYBOARD
   Keyboard.release(key);
-#else
-  Serial.write("Key unpressed: ");
-  Serial.println(key);
 #endif
 }
 
@@ -151,7 +157,7 @@ void unpressKey(Matrix* m, short matrixIndex, short col, short row) {
 // saves passing an arg around
 uint16_t allRows = 0;
 inline bool readPin(short pin, bool remote) {
-  if (!remote) {
+  if (remote) {
     //return !ioexp.digitalRead(low[i]); // deprecated in favour of faster all-row read method
     return !((allRows >> pin) & 0x1);
   } else {
