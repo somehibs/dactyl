@@ -3,15 +3,6 @@
 
 #include "matrix.h"
 
-class Macro {
-public:
-  // Pointer to static char* which is encoded commands
-  char* seq;
-  void execute();
-private:
-  void executeMacroStr(char* macro, int len);
-};
-
 // example macro encoding format
 // r5 kn sd re k78 k78 k78 k78
 // r, d and k are reserved
@@ -32,6 +23,17 @@ private:
 
 // repeat sets cannot be nested - i.e. r5 r5 k65 re re will not work
 
+class Macro {
+public:
+  // Pointer to static char* which is encoded commands
+  char* seq;
+  void execute();
+private:
+  short resumePosition;
+  short delayLength;
+  void executeMacroStr(char* macro, int len);
+};
+
 #define MACRO_COUNT 1
 Macro macros[MACRO_COUNT];
 
@@ -46,12 +48,10 @@ void lentest(char* c) {
 //  strcpy_P(fduff, (char *)pgm_read_word(&(string_table[0])));  // Necessary casts and dereferencing, just copy.
 
 void init_macros() {
-  delay(3500);
-  char* duffer = malloc(sizeof(char)*28);
-  sprintf(duffer, "r10 k%c ds re r3 k%c ds re k%c", KEY_F11, KEY_DOWN_ARROW, KEY_RETURN);
-  lentest(duffer);
-  macros[0].seq = duffer;
-  macros[0].execute();
+  memset(macros, 0, sizeof(Macro)*MACRO_COUNT);
+  macros[0].seq = malloc(sizeof(char)*40);
+  sprintf(macros[0].seq, "r25 k%c ds re dsds r3 k%c dsds re k%c", KEY_F11, KEY_DOWN_ARROW, KEY_RETURN);
+  //lentest(duffer);
 }
 
 void Macro::execute() {
@@ -71,8 +71,10 @@ int countUntil(char* sectionStart, int len, char sectionChar) {
 void Macro::executeMacroStr(char* macro, int len) {
   short repeatModeStart = 0;
   short repeatModeCounter = 0;
-  log(F("execseq %s len %d"), macro, len);
   for (short i = 0; i < len; ++i) {
+#ifdef WATCHDOG_ENABLED
+  wdt_enable(WDTO_1S); // col/row process shouldn't take longer than 250ms
+#endif // WATCHDOG_ENABLED
     unsigned char cmd = macro[i];
     if (cmd == ' ') {
       continue;

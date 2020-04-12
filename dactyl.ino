@@ -3,7 +3,7 @@
 // this is useful for production applications but can be annoying when debugging
 // when enabled, removing the connection between two boards when the io expander is enabled can be used to halt the board in a startup loop
 // 
-//#define WATCHDOG_ENABLED
+#define WATCHDOG_ENABLED
 
 // useful if you have more than one board.
 // intentionally defined to allow users to use only the arduino and remove any code/memory usage from using mcp io expander
@@ -22,9 +22,8 @@
 
 // max matrixes to include
 const short MATRIX_COUNT = 4;
-
 // current firmware version
-const char* VERSION = "1.0.4.0";
+const char* VERSION = "1.0.4.3";
 
 #ifdef WATCHDOG_ENABLED
   #include <avr/wdt.h>
@@ -33,12 +32,12 @@ const char* VERSION = "1.0.4.0";
 
 // shared debug code
 #ifdef DEBUG
-char* debugBuffer = new char[64];
+char* debugBuffer = new char[80];
 void log(const __FlashStringHelper* fmt, ...) {
   if (!fmt) return;
   va_list argp;
   va_start(argp, fmt);
-  vsprintf(debugBuffer, (PGM_P)fmt, argp);
+  vsnprintf_P(debugBuffer, 80, (PGM_P)fmt, argp);
   va_end(argp);
   Serial.println(debugBuffer);
 }
@@ -48,19 +47,8 @@ inline void log(const __FlashStringHelper* _, ...) {
 }
 #endif
 
-#ifdef WPM
-void writeWpm(char* fmt, ...) {
-  char* debugBuffer = new char[64];
-  va_list argp;
-  va_start(argp, fmt);
-  vsprintf_P(debugBuffer, fmt, argp);
-  va_end(argp);
-  Serial.println(debugBuffer);
-}
-#endif
-
-#include "macro.h"
 #include "matrix.h"
+#include "macro.h"
 #include "matrix_dactyl.h"
 
 Matrix matricies[MATRIX_COUNT];

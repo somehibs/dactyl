@@ -43,6 +43,7 @@ Overlay* overlay_main(Overlay* a) {
   a->keymap[M_LEFT_MAIN][5][0] = KEY_F5;
   a->keymap[M_LEFT_MAIN][5][1] = '`';
   // 6 floating keys
+  a->keymap[M_LEFT_MAIN][0][1] = KEY_MACRO_ONE;
   a->keymap[M_LEFT_MAIN][2][1] = KEY_INSERT;
   a->keymap[M_LEFT_MAIN][3][1] = KEY_HOME;
   a->keymap[M_LEFT_MAIN][4][1] = KEY_PAGE_UP;

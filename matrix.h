@@ -5,16 +5,38 @@
 #define MAGIC_DEBOUNCE_NUMBER 0
 
 // dead keys 28-31
+// dead low keys vt to us
 #define KEY_OVERLAY_1 1
 #define KEY_MOUSE_LEFT 28
 #define KEY_DISUSED_1 29
 #define KEY_DISUSED_2 30
 #define KEY_DISUSED_3 31
 // 128-135 used by keyboard for key left and right modifiers
+// 136> are sent to the computer by subtracting 136 from them, explaining the odd layout of the key address space
+// FREE 137-175
+// macros must be contiguous as indexing is based on their keycode
+#define KEY_MACRO_ONE 137
+#define KEY_MACRO_TWO 138
+#define KEY_MACRO_THREE 139
+#define KEY_MACRO_FOUR 140
+#define KEY_MACRO_FIVE 141
+// 176-179 // in use by escape/return/bckspc
+// FREE 180-190
+// 193-205 // low function keys and esc
+// 209-218 // 6 floating keys and arrow keys
+// 240-251 high function keys
 
 #include <avr/pgmspace.h>
 #include "overlay.h"
 #include "macro.h"
+
+Overlay* overlays = 0;
+short enableOverlay = 0;
+
+#ifdef IO_EXPANDER
+#include "Adafruit_MCP23017.h"
+Adafruit_MCP23017 ioexp;
+#endif // IO_EXPANDER
 
 class Matrix {
 public:
@@ -76,14 +98,6 @@ private:
 #endif // IO_EXPANDER
 };
 
-#ifdef IO_EXPANDER
-#include "Adafruit_MCP23017.h"
-Adafruit_MCP23017 ioexp;
-#endif // IO_EXPANDER
-
-Overlay* overlays = 0;
-short enableOverlay = 0;
-
 void configure_matrix(Matrix* m) {
   // configure the read pins as pullup high to prevent floating
   for (int i = 0; i < m->getLowCount(); ++i) {
@@ -121,7 +135,13 @@ void pressKey(Matrix* m, short matrixIndex, short col, short row) {
     if (overlayKey > 0) {
       log(F("overlay: key: %d %d, %d for matrix %s"), overlayKey, col, row, m->name);
       m->overlayPressed[m->getPos(col, row)] = enableOverlay;
-      pressKeyImpl(overlayKey);
+      if (overlayKey >= KEY_MACRO_ONE && overlayKey <= KEY_MACRO_FIVE) {
+        overlayKey -= KEY_MACRO_ONE;
+        log(F("macro key pressed for index %d"), overlayKey);
+        macros[overlayKey].execute();
+      } else {
+        pressKeyImpl(overlayKey);
+      }
       return;
     } else {
       log(F("no overlay (%d enabled): %d, %d overlaykey %d for matrix %s"), enableOverlay, col, row, overlayKey, m->name);
