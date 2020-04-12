@@ -38,6 +38,54 @@ short enableOverlay = 0;
 Adafruit_MCP23017 ioexp;
 #endif // IO_EXPANDER
 
+#ifdef WPM
+// resets every 50 days, probably not a concern
+unsigned long lastMs = 0;
+char keysPressed[60];
+unsigned long ms = 0;
+unsigned long diff = 0;
+char keyIndex = 0;
+#define SHIFT_THRESH 1000
+void cpmlog() {
+  // compute and log the current wpm
+  short total = 0;
+  short count = 0;
+  for (short i = 0; i < 60; ++i) {
+    total += keysPressed[i];
+    if (total != 0) {
+       count += 1;
+    }
+  }
+  char buf[50];
+  sprintf_P(buf, PSTR("cpm: %d wpm: %d"), total, total/5);
+  Serial.println(buf);
+}
+void cpmproc() {
+  ms = millis();
+  diff = ms-lastMs;
+  if (lastMs == 0) {
+    memset(keysPressed, 0, sizeof(unsigned char)*60);
+    lastMs = ms;
+  } else if (diff > SHIFT_THRESH) {
+    int ki = (diff/1000);
+    keyIndex += ki;
+    keysPressed[keyIndex] = 0;
+    if (keyIndex >= 60) {
+      keyIndex = 0;
+    }
+    lastMs = ms;
+  }
+}
+void cpmincrease() {
+  keysPressed[keyIndex] += 1;
+  cpmlog();
+}
+void cpmdecrease() {
+  keysPressed[keyIndex] -= 1;
+  cpmlog();
+}
+#endif // WPM
+
 class Matrix {
 public:
   void init(char* name, short cols, short rows) {
@@ -118,11 +166,18 @@ void configure_matrix(Matrix* m) {
 
 
 #include <Mouse.h>
-void pressKeyImpl(char key) {
+void pressKeyImpl(unsigned char key) {
   if (key == KEY_MOUSE_LEFT) {
     Mouse.click();
     return;
   }
+#ifdef WPM
+  if (key == KEY_BACKSPACE) {
+    cpmdecrease();
+  } else {
+    cpmincrease();
+  }
+#endif // WPM
 #ifdef REAL_KEYBOARD
   Keyboard.press(key);
 #endif
@@ -241,7 +296,7 @@ void processOne(Matrix* m, short matrixIndex, short index) {
     if (!reply) {
       remoteIoFailed();
     }
-    ioexp.digitalWrite(high[index], LOW);
+    //ioexp.digitalWrite(high[index], LOW);
   } else {
     pinMode(high[index], OUTPUT);
     digitalWrite(high[index], LOW);
@@ -260,13 +315,14 @@ void processOne(Matrix* m, short matrixIndex, short index) {
     allRows = ioexp.readGPIOAB();
   }
 #endif // IO_EXPANDER
+  bool read = false;
   for (short i = 0; i < m->getLowCount(); ++i) {
     if (low[i] == -1) {
       continue;
     }
 
     // Read the low pin
-    bool read = readPin(low[i], m);
+    read = readPin(low[i], m);
 
     // Process the read result
     if (m->rowDriven) {

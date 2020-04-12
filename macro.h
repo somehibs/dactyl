@@ -13,7 +13,7 @@
 // ` = starts and ends a string that should be printed to the remote terminal
 
 // reserved but not implemented
-// d1 = delay for 1s
+// d1 = delay for 1s - warning, change wdt if fixing this, consider a millis() based solution
 // space is skipped - you can safely omit them if you want more dynamic memory space
 // khn = hold key n - note this must be a single char!
 // kun == unhold key n - note this must be a single char!
@@ -37,8 +37,8 @@ private:
 #define MACRO_COUNT 1
 Macro macros[MACRO_COUNT];
 
-void lentest(char* c) {
-  log(F("Macro len %d macro: %s"), strlen(c), c);
+void lentest(Macro* m) {
+  log(F("Macro len %d macro: %s"), strlen(m->seq), m->seq);
 }
 
 //#include <avr/pgmspace.h>
@@ -49,9 +49,9 @@ void lentest(char* c) {
 
 void init_macros() {
   memset(macros, 0, sizeof(Macro)*MACRO_COUNT);
-  macros[0].seq = malloc(sizeof(char)*40);
-  sprintf(macros[0].seq, "r25 k%c ds re dsds r3 k%c dsds re k%c", KEY_F11, KEY_DOWN_ARROW, KEY_RETURN);
-  //lentest(duffer);
+  macros[0].seq = malloc(sizeof(char)*80);
+  sprintf_P(macros[0].seq, PSTR("r40 k%c ds re r3 k%c ds re k%c"), KEY_F11, KEY_DOWN_ARROW, KEY_RETURN);
+  //lentest(macros[0]);
 }
 
 void Macro::execute() {
@@ -73,7 +73,7 @@ void Macro::executeMacroStr(char* macro, int len) {
   short repeatModeCounter = 0;
   for (short i = 0; i < len; ++i) {
 #ifdef WATCHDOG_ENABLED
-  wdt_enable(WDTO_1S); // col/row process shouldn't take longer than 250ms
+  wdt_enable(WDTO_1S); // single loop shouldn't be longer than 1s
 #endif // WATCHDOG_ENABLED
     unsigned char cmd = macro[i];
     if (cmd == ' ') {
@@ -119,7 +119,7 @@ void Macro::executeMacroStr(char* macro, int len) {
       i += 1;
     } else if (cmd == 'd') {
       if (next == 's') {
-        delay(500);
+        delay(250);
       }
       i += 1;
     } else if (cmd == '`') {

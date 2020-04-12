@@ -1,4 +1,3 @@
-
 // wdt_enable in loop() will prevent the system from being reprogrammed without a reset
 // this is useful for production applications but can be annoying when debugging
 // when enabled, removing the connection between two boards when the io expander is enabled can be used to halt the board in a startup loop
@@ -13,9 +12,11 @@
 // when debug is undefined, log() will turn into an empty inline method and the compiler will remove 3kb of debug code+strings from memory
 //#define DEBUG true
 //#define DEBUG_RELEASE
+// for debugging how long it takes to run each loop
+//#define LOOPTIMER
 
 // enable wpm counting and logging - has a separate buffer to debug
-#define WPM
+//#define WPM
 
 // comment out to disable keyboard actions. keyboard header still necessary for various key definitions
 #define REAL_KEYBOARD
@@ -23,7 +24,7 @@
 // max matrixes to include
 const short MATRIX_COUNT = 4;
 // current firmware version
-const char* VERSION = "1.0.4.3";
+const char* VERSION = "1.1.0.0";
 
 #ifdef WATCHDOG_ENABLED
   #include <avr/wdt.h>
@@ -32,19 +33,17 @@ const char* VERSION = "1.0.4.3";
 
 // shared debug code
 #ifdef DEBUG
-char* debugBuffer = new char[80];
+char* debugBuffer = new char[128];
 void log(const __FlashStringHelper* fmt, ...) {
   if (!fmt) return;
   va_list argp;
   va_start(argp, fmt);
-  vsnprintf_P(debugBuffer, 80, (PGM_P)fmt, argp);
+  vsnprintf_P(debugBuffer, 128, (PGM_P)fmt, argp);
   va_end(argp);
   Serial.println(debugBuffer);
 }
 #else
-inline void log(const __FlashStringHelper* _, ...) {
-  // Do nothing
-}
+inline void log(const __FlashStringHelper* _, ...) {}
 #endif
 
 #include "matrix.h"
@@ -59,10 +58,10 @@ void setup() {
   MCUSR=0;
   wdt_disable();
 #endif // WATCHDOG_ENABLED
-  Serial.begin(9600);
 #ifdef IO_EXPANDER
+  Serial.begin(9600);
   while (!ioexp.begin()) {
-    Serial.write("Could not init left deck (FW: ");
+    Serial.write(F("Could not init left deck (FW: "));
     Serial.write(VERSION);
     Serial.println(")");
     delay(750);
@@ -72,15 +71,13 @@ void setup() {
   delay(10000); // wait ten seconds instead
 #endif // WATCHDOG_ENABLED
 #endif // IO_EXPANDER
-  Serial.write("FW: ");
-  Serial.println(VERSION);
 #ifdef REAL_KEYBOARD
   Keyboard.begin();
 #endif // REAL_KEYBOARD
   init_matrix();
   init_overlay();
   init_macros();
-  Serial.println("Startup complete.");
+  Serial.println(F("Startup complete."));
 }
 
 void init_matrix() {
@@ -99,6 +96,19 @@ void init_overlay() {
   overlays = myOverlays;
 }
 
+#ifdef LOOPTIMER
+unsigned long lastLoop = 0;
+unsigned long lastReport = 0;
+void idlecheck() {
+  unsigned long ms = millis();
+  if (ms-lastReport > 1000) {
+    lastReport = ms;
+    log(F("loop: %d"), ms-lastLoop);
+  }
+  lastLoop = ms;
+}
+#endif // LOOPTIMER
+
 void loop() {
 #ifdef WATCHDOG_ENABLED
   wdt_enable(WDTO_250MS); // col/row process shouldn't take longer than 250ms
@@ -106,4 +116,10 @@ void loop() {
   for (short xi = 0; xi < MATRIX_COUNT; ++xi) {
     process(matricies+xi, xi);
   }
+#ifdef LOOPTIMER
+  idlecheck();
+#endif // LOOPTIMER
+#ifdef WPM
+  cpmproc();
+#endif // WPM
 }
