@@ -12,6 +12,7 @@
 #define KEY_DISUSED_3 31
 // 128-135 used by keyboard for key left and right modifiers
 
+#include <avr/pgmspace.h>
 #include "overlay.h"
 #include "macro.h"
 
@@ -118,12 +119,12 @@ void pressKey(Matrix* m, short matrixIndex, short col, short row) {
     // if this isnt handled, let the original key go through
     unsigned char overlayKey = overlays[enableOverlay - 1].keymap[matrixIndex][col][row];
     if (overlayKey > 0) {
-      log("overlay: key: %d %d, %d for matrix %s", overlayKey, col, row, m->name);
+      log(F("overlay: key: %d %d, %d for matrix %s"), overlayKey, col, row, m->name);
       m->overlayPressed[m->getPos(col, row)] = enableOverlay;
       pressKeyImpl(overlayKey);
       return;
     } else {
-      log("no overlay (%d enabled): %d, %d overlaykey %d for matrix %s", enableOverlay, col, row, overlayKey, m->name);
+      log(F("no overlay (%d enabled): %d, %d overlaykey %d for matrix %s"), enableOverlay, col, row, overlayKey, m->name);
       //return; // suppress fallthrough keypresses when the overlay isn't bound to fix confusing keypress issues
     }
   }
@@ -131,7 +132,7 @@ void pressKey(Matrix* m, short matrixIndex, short col, short row) {
   if (key == KEY_OVERLAY_1) {
     // enable this overlay
     enableOverlay = key;
-    log("enable overlay %d", enableOverlay);
+    log(F("enable overlay %d"), enableOverlay);
     return;
   }
   pressKeyImpl(key);
@@ -174,10 +175,10 @@ void unpressKey(Matrix* m, short matrixIndex, short col, short row) {
   }
   unsigned char key = m->keymap[col][row];
   if (key == KEY_OVERLAY_1) {
-    log("disable overlay %d", enableOverlay);
+    log(F("disable overlay %d"), enableOverlay);
     enableOverlay = 0;
   } else if (key == 0) {
-    log("key missing %d %d mx %s", col, row, m->name);
+    log(F("key missing %d %d mx %s"), col, row, m->name);
   } else {
     unpressKeyImpl(key);
   }
@@ -209,7 +210,7 @@ void processOne(Matrix* m, short matrixIndex, short index) {
 
   // Sanity check
   if (high[index] == -1) {
-    log("High %d missing from matrix %s", index, m->name);
+    log(F("High %d missing from matrix %s"), index, m->name);
     return;
   }
 
@@ -262,13 +263,13 @@ void processOne(Matrix* m, short matrixIndex, short index) {
         m->keyset[keysetPos] = 2;
       }
       if (m->keymap[keysetPos] != 0 && m->keyset[keysetPos] == 1) {
-        log("keypress: %d, %d allread %u for matrix %s", column, row, allRows, m->name);
+        log(F("keypress: %d, %d allread %u for matrix %s"), column, row, allRows, m->name);
         pressKey(m, matrixIndex, column, row);
       } else if (m->keymap[column][row] == 0) {
-        log("Could not read key for col %d and row %d for matrix %s", column, row, m->name);
+        log(F("Could not read key for col %d and row %d for matrix %s"), column, row, m->name);
       } else {
 #ifdef VERBOSE
-        log("pos %d %d c %d mx %s", column, row, m->keyset[keysetPos], m->name);
+        log(F("pos %d %d c %d mx %s"), column, row, m->keyset[keysetPos], m->name);
 #endif
       }
       // Only unpress a key if it's been held long enough (swap this if keys ghost a lot)
@@ -278,7 +279,7 @@ void processOne(Matrix* m, short matrixIndex, short index) {
 #endif // IO_EXPANDER
     ) {
 #ifdef DEBUG_RELEASE
-      log("key release: %d, %d allread %u for matrix %s", column, row, allRows, m->name);
+      log(F("key release: %d, %d allread %u for matrix %s"), column, row, allRows, m->name);
 #endif // DEBUG_RELEASE
       unpressKey(m, matrixIndex, column, row);
       m->keyset[m->getPos(column, row)] = 0;

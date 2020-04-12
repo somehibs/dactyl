@@ -19,14 +19,16 @@ private:
 // re = repeat end
 // kn = press key n - note this must be a single char!
 // ds = short delay, 500ms
+// ` = starts and ends a string that should be printed to the remote terminal
 
 // reserved but not implemented
 // d1 = delay for 1s
-// ` = starts and ends a string that should be printed to the remote terminal
 // space is skipped - you can safely omit them if you want more dynamic memory space
 // khn = hold key n - note this must be a single char!
 // kun == unhold key n - note this must be a single char!
 // the char gives a command space of 255 and with arguments this should last a simple macro framework for a while
+
+// this code is unsafe - incorrect macro sequences may cause your microcontroller to crash doing an illegal operation
 
 // repeat sets cannot be nested - i.e. r5 r5 k65 re re will not work
 
@@ -34,11 +36,17 @@ private:
 Macro macros[MACRO_COUNT];
 
 void lentest(char* c) {
-  log("Macro len %d macro: %s", strlen(c), c);
+  log(F("Macro len %d macro: %s"), strlen(c), c);
 }
 
+//#include <avr/pgmspace.h>
+//const char fst[] PROGMEM = ;
+//const char *const string_table[] PROGMEM = {fst};
+//  char* fduff = malloc(sizeof(char)*28);
+//  strcpy_P(fduff, (char *)pgm_read_word(&(string_table[0])));  // Necessary casts and dereferencing, just copy.
+
 void init_macros() {
-  delay(4000);
+  delay(3500);
   char* duffer = malloc(sizeof(char)*28);
   sprintf(duffer, "r10 k%c ds re r3 k%c ds re k%c", KEY_F11, KEY_DOWN_ARROW, KEY_RETURN);
   lentest(duffer);
@@ -51,10 +59,19 @@ void Macro::execute() {
   this->executeMacroStr(this->seq, len);
 }
 
+int countUntil(char* sectionStart, int len, char sectionChar) {
+  for (int i = 0; i < len; ++i) {
+    if (sectionStart[i] == sectionChar) {
+      return i;
+    }
+  }
+  return 1;
+}
+
 void Macro::executeMacroStr(char* macro, int len) {
   short repeatModeStart = 0;
   short repeatModeCounter = 0;
-  log("execseq %s len %d", macro, len);
+  log(F("execseq %s len %d"), macro, len);
   for (short i = 0; i < len; ++i) {
     unsigned char cmd = macro[i];
     if (cmd == ' ') {
@@ -64,7 +81,7 @@ void Macro::executeMacroStr(char* macro, int len) {
     if (cmd == 'r') {
       if (next == 'e') {
         // repeat end, execute repeatModeStart
-        log("finishing repeat mode for %d times at position %d", repeatModeCounter, i);
+        log(F("finishing repeat mode for %d times at position %d"), repeatModeCounter, i);
         for (int j = 0; j < repeatModeCounter; ++j) {
           this->executeMacroStr(this->seq+repeatModeStart, i-repeatModeStart);
         }
@@ -83,17 +100,17 @@ void Macro::executeMacroStr(char* macro, int len) {
           repeatModeStart += 1;
         }
         i += 1;
-        log("entering repeat mode for %d times at position %d", repeatModeCounter, repeatModeStart);
+        log(F("entering repeat mode for %d times at position %d"), repeatModeCounter, repeatModeStart);
       }
     }
     if (repeatModeStart != 0 && repeatModeCounter != 0) {
       // suppress commands until repeat mode is handled
       continue;
     }
-    log("processing command %c (next: %c)", cmd, next);
+    log(F("processing command %c (next: %c)"), cmd, next);
     if (cmd == 'k') {
       // Push the next char as a key
-      log("pushing key %c (d: %d)", next, next);
+      log(F("pushing key %c (d: %d)"), next, next);
 #ifdef REAL_KEYBOARD
       Keyboard.write(next);
 #endif // REAL_KEYBOARD
@@ -103,6 +120,11 @@ void Macro::executeMacroStr(char* macro, int len) {
         delay(500);
       }
       i += 1;
+    } else if (cmd == '`') {
+      int seqLen = countUntil(macro+i+1, len-1-i, '`');
+      log(F("Sequence should be %d chars"), seqLen);
+      Keyboard.write(macro+i+1, seqLen);
+      i = i+seqLen+1;
     }
   }
 }

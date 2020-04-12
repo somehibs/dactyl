@@ -11,8 +11,8 @@
 
 // debug flag, call log() as you would sprintf serial.println
 // when debug is undefined, log() will turn into an empty inline method and the compiler will remove 3kb of debug code+strings from memory
-#define DEBUG true
-#define DEBUG_RELEASE
+//#define DEBUG true
+//#define DEBUG_RELEASE
 
 // enable wpm counting and logging - has a separate buffer to debug
 #define WPM
@@ -34,15 +34,16 @@ const char* VERSION = "1.0.3.4";
 // shared debug code
 #ifdef DEBUG
 char* debugBuffer = new char[64];
-void log(char* fmt, ...) {
+void log(const __FlashStringHelper* fmt, ...) {
+  if (!fmt) return;
   va_list argp;
   va_start(argp, fmt);
-  vsprintf(debugBuffer, fmt, argp);
+  vsprintf(debugBuffer, (PGM_P)fmt, argp);
   va_end(argp);
   Serial.println(debugBuffer);
 }
 #else
-inline void log(char* _, ...) {
+inline void log(const __FlashStringHelper* _, ...) {
   // Do nothing
 }
 #endif
@@ -52,7 +53,7 @@ void writeWpm(char* fmt, ...) {
   char* debugBuffer = new char[64];
   va_list argp;
   va_start(argp, fmt);
-  vsprintf(debugBuffer, fmt, argp);
+  vsprintf_P(debugBuffer, fmt, argp);
   va_end(argp);
   Serial.println(debugBuffer);
 }
