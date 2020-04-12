@@ -1,9 +1,3 @@
-// wdt_enable in loop() will prevent the system from being reprogrammed without a reset
-// this is useful for production applications but can be annoying when debugging
-// when enabled, removing the connection between two boards when the io expander is enabled can be used to halt the board in a startup loop
-// 
-#define WATCHDOG_ENABLED
-
 // useful if you have more than one board.
 // intentionally defined to allow users to use only the arduino and remove any code/memory usage from using mcp io expander
 #define IO_EXPANDER
@@ -14,6 +8,14 @@
 //#define DEBUG_RELEASE
 // for debugging how long it takes to run each loop
 //#define LOOPTIMER
+
+// wdt_enable in loop() will prevent the system from being reprogrammed without a reset
+// this is useful for production applications but can be annoying when debugging
+// when enabled, removing the connection between two boards when the io expander is enabled can be used to halt the board in a startup loop
+// debug disables this to make it easy to program but remember not to spend more than 250ms thinking in the processing loop
+#ifndef DEBUG
+#define WATCHDOG_ENABLED
+#endif // DEBUG
 
 // enable wpm counting and logging - has a separate buffer to debug
 //#define WPM
@@ -61,7 +63,7 @@ void setup() {
 #ifdef IO_EXPANDER
   Serial.begin(9600);
   while (!ioexp.begin()) {
-    Serial.write(F("Could not init left deck (FW: "));
+    Serial.print(F("Could not init left deck (FW: "));
     Serial.write(VERSION);
     Serial.println(")");
     delay(750);

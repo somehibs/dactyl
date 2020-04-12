@@ -227,15 +227,15 @@ void unpressKeyImpl(char key) {
 #include <avr/wdt.h>
 #endif
 void remoteIoFailed() {
-  Serial.write("Bad remote IO call reply");
+  Serial.write(F("Bad remote IO call reply"));
 #ifdef WATCHDOG_ENABLED
-  Serial.println(" system halt!");
+  Serial.println(F(" system halt!"));
   wdt_enable(WDTO_15MS);
   while(1) {
     delay(1);
   }
 #else
-  Serial.println(" watchdog disabled - no action");
+  Serial.println(F(" watchdog disabled - no action"));
 #endif
 }
 
