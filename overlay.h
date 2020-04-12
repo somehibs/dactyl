@@ -3,7 +3,9 @@ struct Overlay {
 };
 
 #define M_RIGHT_MAIN 0
+#define M_RIGHT_THUMB 1
 #define M_LEFT_MAIN 2
+#define M_LEFT_THUMB 3
 
 void clearOverlay(Overlay* o) {
   memset(o, 0, sizeof(Overlay));
@@ -52,5 +54,8 @@ Overlay* overlay_main(Overlay* a) {
   a->keymap[M_LEFT_MAIN][3][3] = KEY_DOWN_ARROW;
   a->keymap[M_LEFT_MAIN][4][3] = KEY_UP_ARROW;
   a->keymap[M_LEFT_MAIN][5][3] = KEY_RIGHT_ARROW;
+
+  // convert backspace to return when overlay is enabled
+  a->keymap[M_LEFT_THUMB][1][1] = KEY_RETURN;
   return a;
 }

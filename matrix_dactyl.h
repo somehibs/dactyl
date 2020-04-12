@@ -1,6 +1,6 @@
 Matrix main_matrix_right() {
   Matrix a;
-  clearMatrix(&a);
+  a.init("main_right", 6, 5);
   a.rows[0] = 1; // TX0
   a.rows[1] = 0; // RX1
   a.rows[2] = 4;
@@ -12,8 +12,6 @@ Matrix main_matrix_right() {
   a.columns[3] = 7;
   a.columns[4] = 8;
   a.columns[5] = 9;
-  a.columnCount = MAX_COLS;
-  a.rowCount = MAX_ROWS;
   a.keymap[0][0] = '6';
   a.keymap[0][1] = 'y';
   a.keymap[0][2] = 'h';
@@ -44,13 +42,12 @@ Matrix main_matrix_right() {
   a.keymap[5][2] = '\'';
   a.keymap[5][3] = KEY_BACKSPACE;
   a.keymap[5][4] = KEY_PAGE_DOWN;
-  a.name = "main_right";
   return a;
 }
 
 Matrix thumb_matrix_right() {
   Matrix a;
-  clearMatrix(&a);
+  a.init("thumb_right", 3, 2);
   a.rows[0] = 16;
   a.rows[1] = 10;
   a.columns[0] = 18;
@@ -61,17 +58,13 @@ Matrix thumb_matrix_right() {
   a.keymap[1][0] = KEY_RIGHT_SHIFT;
   a.keymap[1][1] = KEY_RETURN;
   a.keymap[2][0] = KEY_RIGHT_CTRL;
-  a.keymap[2][1] = ' ';
-  a.columnCount = 3; 
-  a.rowCount = 2;
-  a.name = "thumb_right";
   return a;
 }
 
 Matrix main_matrix_left() {
   Matrix a;
-  clearMatrix(&a);
-  a.remote = true;
+  a.init("left_main", 6, 5);
+  a.setRemote();
   a.rows[0] = 14;
   a.rows[1] = 13;
   a.rows[2] = 12;
@@ -83,8 +76,6 @@ Matrix main_matrix_left() {
   a.columns[3] = 3;
   a.columns[4] = 4;
   a.columns[5] = 15;
-  a.columnCount = 6;
-  a.rowCount = 5;
   a.keymap[0][0] = '`';
   a.keymap[0][1] = KEY_TAB;
   a.keymap[0][2] = KEY_ESC;
@@ -115,15 +106,13 @@ Matrix main_matrix_left() {
   a.keymap[5][2] = 'g';
   a.keymap[5][3] = 'b';
   a.keymap[5][4] = ' ';
-  a.remote = true;
-  a.name = "left_main";
   return a;
 }
 
 Matrix thumb_matrix_left() { // alt, space, shift, dunno top right three yet
   Matrix a;
-  clearMatrix(&a);
-  a.remote = true;
+  a.init("left_thumb", 3, 2);
+  a.setRemote();
   a.rows[0] = 9;
   a.rows[1] = 8;
   a.columns[0] = 5;
@@ -135,8 +124,5 @@ Matrix thumb_matrix_left() { // alt, space, shift, dunno top right three yet
   a.keymap[1][1] = KEY_BACKSPACE;
   a.keymap[2][0] = KEY_LEFT_CTRL;
   a.keymap[2][1] = ' ';
-  a.columnCount = 3;
-  a.rowCount = 2;
-  a.name = "left_thumb";
   return a;
 }

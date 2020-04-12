@@ -1,74 +1,105 @@
-#define REAL_KEYBOARD
-//#define DEBUG true
+#ifndef __MATRIX_H__
+#define __MATRIX_H__
+#define MAX_COLS 6
+#define MAX_ROWS 5
+#define MAGIC_DEBOUNCE_NUMBER 0
 
-const short MAX_COLS = 6;
-const short MAX_ROWS = 5;
-const short MAGIC_DEBOUNCE_NUMBER = 0;
 // dead keys 28-31
-const short KEY_OVERLAY_1 = 1;
-const short KEY_MOUSE_LEFT = 28;
-
-char* debugBuffer = new char[64];
+#define KEY_OVERLAY_1 1
+#define KEY_MOUSE_LEFT 28
+#define KEY_DISUSED_1 29
+#define KEY_DISUSED_2 30
+#define KEY_DISUSED_3 31
+// 128-135 used by keyboard for key left and right modifiers
 
 #include "overlay.h"
+#include "macro.h"
 
-struct Matrix {
-  char columns[MAX_COLS];
-  char rows[MAX_ROWS];
+class Matrix {
+public:
+  void init(char* name, short cols, short rows) {
+    memset(this, 0, sizeof(Matrix));
+    this->name = name;
+    this->rowDriven = true;
+    this->columnCount = cols;
+    this->rowCount = rows;
+    this->columns = malloc(sizeof(char)*cols);
+    this->rows = malloc(sizeof(char)*rows);
+    memset(this->columns, -1, sizeof(char)*cols);
+    memset(this->rows, -1, sizeof(char)*rows);
+    this->keyset = malloc(sizeof(char)*rows*cols);
+    memset(this->keyset, 0, sizeof(char)*rows*cols);
+    this->overlayPressed = malloc(sizeof(char)*rows*cols);
+    memset(this->overlayPressed, 0, sizeof(char)*rows*cols);
+  }
+
+  void setRemote() {
+  #ifdef IO_EXPANDER
+    this->remote = true;
+  #endif
+  }
+
+  #ifdef IO_EXPANDER
+  bool isRemote() {
+    return this->remote;
+  }
+  #endif
+
+  short getHighCount() {
+    return this->rowDriven ? this->rowCount : this->columnCount;
+  }
+
+  short getLowCount() {
+    return this->rowDriven ? this->columnCount : this->rowCount;
+  }
+
+  short getPos(char col, char row) {
+    return (col*this->rowCount)+row;
+  }
+
+  // don't edit these at runtime please
+  char* columns;
+  char* rows;
+  bool rowDriven;
+  const char* name;
+  unsigned char* keyset;
+  char* overlayPressed;
   unsigned char keymap[MAX_COLS][MAX_ROWS];
-  short keyset[MAX_COLS][MAX_ROWS];
-  char overlayPressed[MAX_COLS][MAX_ROWS];
+
+private:
   short columnCount;
   short rowCount;
-  const char* name;
-  bool rowDriven;
+#ifdef IO_EXPANDER
   // at the other end of MCP23017, use ioexp instead of digitalWrite directly
   bool remote;
+#endif // IO_EXPANDER
 };
 
-
+#ifdef IO_EXPANDER
+#include "Adafruit_MCP23017.h"
+Adafruit_MCP23017 ioexp;
+#endif // IO_EXPANDER
 
 Overlay* overlays = 0;
 short enableOverlay = 0;
 
-#include "Adafruit_MCP23017.h"
-Adafruit_MCP23017 ioexp;
-
-void clearMatrix(Matrix* a) {
-  memset(a, 0, sizeof(Matrix));
-  memset(a->columns, -1, sizeof(short)*MAX_COLS);
-  memset(a->rows, -1, sizeof(short)*MAX_ROWS);
-  // row driven by default
-  a->rowDriven = true;
-}
-
 void configure_matrix(Matrix* m) {
   // configure the read pins as pullup high to prevent floating
-  for (int i = 0; i < (m->rowDriven ? m->columnCount : m->rowCount); ++i) {
+  for (int i = 0; i < m->getLowCount(); ++i) {
     short pin = m->rowDriven ? m->columns[i] : m->rows[i];
     if (pin != -1) {
-      if (m->remote) {
+#ifdef IO_EXPANDER
+      if (m->isRemote()) {
         ioexp.pullUp(pin, HIGH);
       } else {
         pinMode(pin, INPUT_PULLUP);
       }
+#else
+      pinMode(pin, INPUT_PULLUP);
+#endif // IO_EXPANDER
     }
   }
 }
-
-#ifdef DEBUG
-void log(char* fmt, ...) {
-  va_list argp;
-  va_start(argp, fmt);
-  vsprintf(debugBuffer, fmt, argp);
-  va_end(argp);
-  Serial.println(debugBuffer);
-}
-#else
-inline void log(char* _, ...) {
-  // Do nothing
-}
-#endif
 
 
 #include <Mouse.h>
@@ -88,7 +119,7 @@ void pressKey(Matrix* m, short matrixIndex, short col, short row) {
     unsigned char overlayKey = overlays[enableOverlay - 1].keymap[matrixIndex][col][row];
     if (overlayKey > 0) {
       log("overlay: key: %d %d, %d for matrix %s", overlayKey, col, row, m->name);
-      m->overlayPressed[col][row] = enableOverlay;
+      m->overlayPressed[m->getPos(col, row)] = enableOverlay;
       pressKeyImpl(overlayKey);
       return;
     } else {
@@ -133,13 +164,12 @@ void remoteIoFailed() {
 }
 
 void unpressKey(Matrix* m, short matrixIndex, short col, short row) {
-  if (m->overlayPressed[col][row] != 0) {
+  if (m->overlayPressed[m->getPos(col, row)] != 0) {
     // unpress overlay key instead
-    short overlay = m->overlayPressed[col][row];
+    short overlay = m->overlayPressed[m->getPos(col, row)];
     unsigned char overlayKey = overlays[overlay - 1].keymap[matrixIndex][col][row];
     unpressKeyImpl(overlayKey);
-    m->overlayPressed[col][row] = 0;
-    m->keyset[col][row] = 0;
+    m->overlayPressed[m->getPos(col, row)] = 0;
     return;
   }
   unsigned char key = m->keymap[col][row];
@@ -151,18 +181,21 @@ void unpressKey(Matrix* m, short matrixIndex, short col, short row) {
   } else {
     unpressKeyImpl(key);
   }
-  m->keyset[col][row] = 0;
 }
 
 // saves passing an arg around
 uint16_t allRows = 0;
-inline bool readPin(short pin, bool remote) {
-  if (remote) {
+inline bool readPin(short pin, Matrix* m) {
+#ifdef IO_EXPANDER
+  if (m->isRemote()) {
     //return !ioexp.digitalRead(low[i]); // deprecated in favour of faster all-row read method
     return !((allRows >> pin) & 0x1);
   } else {
     return !digitalRead(pin);
   }
+#else
+    return !digitalRead(pin);
+#endif // IO_EXPANDER
 }
 
 void processOne(Matrix* m, short matrixIndex, short index) {
@@ -181,31 +214,38 @@ void processOne(Matrix* m, short matrixIndex, short index) {
   }
 
   // Set high
-  if (!m->remote) {
-    pinMode(high[index], OUTPUT);
-    digitalWrite(high[index], LOW);
-  } else {
+#ifdef IO_EXPANDER
+  if (m->isRemote()) {
     bool reply = ioexp.pinMode(high[index], OUTPUT);
     if (!reply) {
       remoteIoFailed();
     }
     ioexp.digitalWrite(high[index], LOW);
+  } else {
+    pinMode(high[index], OUTPUT);
+    digitalWrite(high[index], LOW);
   }
+#else
+  pinMode(high[index], OUTPUT);
+  digitalWrite(high[index], LOW);
+#endif // IO_EXPANDER
   
   // Prepare to read rows and act on col/row lookups
   short column = index;
   short row = index; // will be corrected in loop
-  if (m->remote) {
+#ifdef IO_EXPANDER
+  if (m->isRemote()) {
     // read all the pins now
     allRows = ioexp.readGPIOAB();
   }
-  for (short i = 0; i < (m->rowDriven ? m->columnCount : m->rowCount); ++i) {
+#endif // IO_EXPANDER
+  for (short i = 0; i < m->getLowCount(); ++i) {
     if (low[i] == -1) {
       continue;
     }
 
     // Read the low pin
-    bool read = readPin(low[i], m->remote);
+    bool read = readPin(low[i], m);
 
     // Process the read result
     if (m->rowDriven) {
@@ -214,39 +254,54 @@ void processOne(Matrix* m, short matrixIndex, short index) {
       row = i;
     }
     if (read) {
+      short keysetPos = m->getPos(column, row);
       // Key is held, add to keyset value
-      m->keyset[column][row] += 1;
-      if (m->keyset[column][row] == 32766) {
+      m->keyset[keysetPos] += 1;
+      if (m->keyset[keysetPos] == 254) {
         // nearly at short wraparound, jump back to 2
-        m->keyset[column][row] = 2;
+        m->keyset[keysetPos] = 2;
       }
-      if (m->keymap[column][row] != 0 && m->keyset[column][row] == 1) {
+      if (m->keymap[keysetPos] != 0 && m->keyset[keysetPos] == 1) {
         log("keypress: %d, %d allread %u for matrix %s", column, row, allRows, m->name);
         pressKey(m, matrixIndex, column, row);
       } else if (m->keymap[column][row] == 0) {
         log("Could not read key for col %d and row %d for matrix %s", column, row, m->name);
       } else {
 #ifdef VERBOSE
-        log("pos %d %d c %d mx %s", column, row, m->keyset[column][row], m->name);
+        log("pos %d %d c %d mx %s", column, row, m->keyset[keysetPos], m->name);
 #endif
       }
       // Only unpress a key if it's been held long enough (swap this if keys ghost a lot)
-    } else if ((m->keyset[column][row]>0&&m->remote) || (m->keyset[column][row] > MAGIC_DEBOUNCE_NUMBER)) {
+    } else if ((m->keyset[m->getPos(column, row)] > MAGIC_DEBOUNCE_NUMBER)
+#ifdef IO_EXPANDER
+    || (m->keyset[m->getPos(column, row)]>0&&m->isRemote())
+#endif // IO_EXPANDER
+    ) {
+#ifdef DEBUG_RELEASE
+      log("key release: %d, %d allread %u for matrix %s", column, row, allRows, m->name);
+#endif // DEBUG_RELEASE
       unpressKey(m, matrixIndex, column, row);
+      m->keyset[m->getPos(column, row)] = 0;
     }
   }
   // Set column low
-  if (!m->remote) {
-    pinMode(high[index], INPUT);
-  } else {
+#ifdef IO_EXPANDER
+  if (m->isRemote()) {
     ioexp.pinMode(high[index], INPUT);
+  } else {
+    pinMode(high[index], INPUT);
   }
+#else
+    pinMode(high[index], INPUT);
+#endif // IO_EXPANDER
 }
 
 // Process each row/column
 void process(Matrix* m, short matrixIndex) {
-  short matrixMax = m->rowDriven ? m->rowCount : m->columnCount;
+  short matrixMax = m->getHighCount();
   for (short i = 0; i < matrixMax; ++i) {
     processOne(m, matrixIndex, i);
   }
 }
+
+#endif // __MATRIX_H__
