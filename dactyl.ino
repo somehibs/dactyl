@@ -24,7 +24,7 @@
 const short MATRIX_COUNT = 4;
 
 // current firmware version
-const char* VERSION = "1.0.3.4";
+const char* VERSION = "1.0.4.0";
 
 #ifdef WATCHDOG_ENABLED
   #include <avr/wdt.h>
