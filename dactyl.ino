@@ -26,10 +26,10 @@
 // max matrixes to include
 const short MATRIX_COUNT = 4;
 // current firmware version
-const char* VERSION = "1.1.0.0";
+const char* VERSION = "1.1.0.4";
 
 #ifdef WATCHDOG_ENABLED
-  #include <avr/wdt.h>
+#include <avr/wdt.h>
 #endif
 #include <Keyboard.h>
 
@@ -57,7 +57,7 @@ Overlay myOverlays[1];
 
 void setup() {
 #ifdef WATCHDOG_ENABLED
-  MCUSR=0;
+  MCUSR = 0;
   wdt_disable();
 #endif // WATCHDOG_ENABLED
 #ifdef IO_EXPANDER
@@ -103,9 +103,9 @@ unsigned long lastLoop = 0;
 unsigned long lastReport = 0;
 void idlecheck() {
   unsigned long ms = millis();
-  if (ms-lastReport > 1000) {
+  if (ms - lastReport > 1000) {
     lastReport = ms;
-    log(F("loop: %d"), ms-lastLoop);
+    log(F("loop: %d"), ms - lastLoop);
   }
   lastLoop = ms;
 }
@@ -116,7 +116,7 @@ void loop() {
   wdt_enable(WDTO_250MS); // col/row process shouldn't take longer than 250ms
 #endif // WATCHDOG_ENABLED
   for (short xi = 0; xi < MATRIX_COUNT; ++xi) {
-    process(matricies+xi, xi);
+    process(matricies + xi, xi);
   }
 #ifdef LOOPTIMER
   idlecheck();

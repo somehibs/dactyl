@@ -41,7 +41,7 @@ Overlay* overlay_main(Overlay* a) {
   a->keymap[M_LEFT_MAIN][3][0] = KEY_F3;
   a->keymap[M_LEFT_MAIN][4][0] = KEY_F4;
   a->keymap[M_LEFT_MAIN][5][0] = KEY_F5;
-  a->keymap[M_LEFT_MAIN][5][1] = '`';
+  a->keymap[M_LEFT_MAIN][5][1] = KEY_MACRO_TWO;
   // 6 floating keys
   a->keymap[M_LEFT_MAIN][0][1] = KEY_MACRO_ONE;
   a->keymap[M_LEFT_MAIN][2][1] = KEY_INSERT;
