@@ -14,19 +14,35 @@
 // 128-135 used by keyboard for key left and right modifiers
 // 136> are sent to the computer by subtracting 136 from them, explaining the odd layout of the key address space
 // FREE 137-175
-// macros must be contiguous as indexing is based on their keycode
-#define KEY_MACRO_ONE 137
-#define KEY_MACRO_TWO 138
-#define KEY_MACRO_THREE 139
-#define KEY_MACRO_FOUR 140
-#define KEY_MACRO_FIVE 141
+// macros must be contiguous as usage indexes indexing is based on their keycode
+#define KEY_MACRO_1 137
+#define KEY_MACRO_2 138
+#define KEY_MACRO_3 139
+#define KEY_MACRO_4 140
+#define KEY_MACRO_5 141
+#define KEY_MACRO_6 142
+#define KEY_MACRO_7 143
+#define KEY_MACRO_8 144
+#define KEY_MACRO_9 145
+#define KEY_MACRO_10 146
+#define KEY_MACRO_11 147
+#define KEY_MACRO_12 148
+#define KEY_MACRO_13 149
+#define KEY_MACRO_14 150
+#define KEY_MACRO_15 151
+#define KEY_MACRO_16 152
+#define KEY_MACRO_17 153
+#define KEY_MACRO_18 154
+#define KEY_MACRO_19 155
+#define KEY_MACRO_20 156
+#define KEY_MACRO_MAX 156
 // 176-179 // in use by escape/return/bckspc
 // FREE 180-190
 // 193-205 // low function keys and esc
 // 209-218 // 6 floating keys and arrow keys
 // 240-251 high function keys
 
-#include <avr/pgmspace.h>
+#include <avr/pgmspace.h> // methods and macros for accessing program space / flash memory
 #include "overlay.h"
 #include "macro.h"
 
@@ -164,7 +180,6 @@ void configure_matrix(Matrix* m) {
   }
 }
 
-
 #include <Mouse.h>
 void pressKeyImpl(unsigned char key) {
   if (key == KEY_MOUSE_LEFT) {
@@ -190,8 +205,8 @@ void pressKey(Matrix* m, short matrixIndex, short col, short row) {
     if (overlayKey > 0) {
       log(F("overlay: key: %d %d, %d for matrix %s"), overlayKey, col, row, m->name);
       m->overlayPressed[m->getPos(col, row)] = enableOverlay;
-      if (overlayKey >= KEY_MACRO_ONE && overlayKey <= KEY_MACRO_FIVE) {
-        overlayKey -= KEY_MACRO_ONE;
+      if (overlayKey >= KEY_MACRO_1 && overlayKey <= KEY_MACRO_MAX) {
+        overlayKey -= KEY_MACRO_1;
         log(F("macro key pressed for index %d"), overlayKey);
         macros[overlayKey].execute();
       } else {
@@ -221,7 +236,6 @@ void unpressKeyImpl(char key) {
   Keyboard.release(key);
 #endif
 }
-
 
 #ifdef WATCHDOG_ENABLED
 #include <avr/wdt.h>

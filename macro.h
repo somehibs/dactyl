@@ -1,7 +1,7 @@
 #ifndef __MACRO_H__
 #define __MACRO_H__
 
-#include "matrix.h"
+#include <Keyboard.h>
 
 // example macro encoding format
 // r5 kn sd re k78 k78 k78 k78
@@ -46,17 +46,6 @@ void lentest(Macro* m) {
 //const char *const string_table[] PROGMEM = {fst};
 //  char* fduff = malloc(sizeof(char)*28);
 //  strcpy_P(fduff, (char *)pgm_read_word(&(string_table[0])));  // Necessary casts and dereferencing, just copy.
-
-void init_macros() {
-  delay(4000);
-  memset(macros, 0, sizeof(Macro)*MACRO_COUNT);
-  macros[0].seq = malloc(sizeof(char)*28);
-  sprintf_P(macros[0].seq, PSTR("r35 k%c ds re r2 k%c ds re k%c"), KEY_F11, KEY_DOWN_ARROW, KEY_RETURN);
-  //lentest(macros);
-  macros[1].seq = malloc(sizeof(char)*20);
-  sprintf_P(macros[1].seq, PSTR("h%c k%c u%c"), KEY_LEFT_ALT, KEY_F2, KEY_LEFT_ALT);
-  //lentest(macros+1);
-}
 
 void Macro::execute() {
   int len = strlen(this->seq);
