@@ -1,4 +1,4 @@
-// useful if you have more than one board.
+// useful if you have more than one half to a keyboard
 // intentionally defined to allow users to use only the arduino and remove any code/memory usage from using mcp io expander
 #define IO_EXPANDER
 
@@ -7,9 +7,9 @@
 //#define DEBUG true
 #ifdef DEBUG
 // features that depend on debug to work anyway
-// key releases
-#define DEBUG_RELEASE
-// for debugging how long it takes to run each loop
+// key release log
+//#define DEBUG_RELEASE
+// how long it takes to run each loop and how much memory is currently between heap and stack
 #define LOOPTIMER
 #endif // DEBUG
 
@@ -17,12 +17,18 @@
 // this is useful for production applications but can be annoying when debugging
 // when enabled, removing the connection between two boards when the io expander is enabled can be used to halt the board in a startup loop
 // debug disables this to make it easy to program
-// remember not to spend more than 250ms thinking in the processing loop
+// remember not to spend more than 250ms thinking in the processing loop or *boom*
 #ifndef DEBUG
 #define WATCHDOG_ENABLED
 #endif // DEBUG
 
-// enable wpm counting and logging - has a separate buffer to debug
+// record lifetime keystrokes in eeprom.
+// because this updates the eeprom daily, 100,000 writes will last 273 years.
+// five updates a day during periods of activity would only reduce the lifespan to 54 years. probably longer than i've got left
+// a specific override key may also write the eeprom immediately
+#define LIFETIME_KEYSTROKES
+
+// wpm over last 60s. no storage or stats
 //#define WPM
 
 // comment out to disable keyboard actions. keyboard header still necessary for various key definitions
@@ -31,7 +37,7 @@
 // max matrixes to include
 const short MATRIX_COUNT = 4;
 // current firmware version
-const char* VERSION = "1.1.0.4";
+const char* VERSION = "1.2.0.0";
 
 #ifdef WATCHDOG_ENABLED
 #include <avr/wdt.h>
@@ -93,6 +99,9 @@ void setup() {
   init_overlay();
   init_macros();
   Serial.println(F("Startup complete."));
+#ifdef LIFETIME_KEYSTROKES
+  EEPROM.get(0, keystrokes);
+#endif // LIFETIME_KEYSTROKES
 }
 
 void init_matrix() {
@@ -113,10 +122,10 @@ void init_overlay() {
 
 void init_macros() {
   memset(macros, 0, sizeof(Macro)*MACRO_COUNT);
-  macros[0].seq = malloc(sizeof(char)*22);
+  macros[0].seq = malloc(sizeof(char) * 22);
   sprintf_P(macros[0].seq, PSTR("r35k%cdsre r2k%cdsre k%c"), KEY_F11, KEY_DOWN_ARROW, KEY_RETURN);
   //lentest(macros);
-  macros[1].seq = malloc(sizeof(char)*7);
+  macros[1].seq = malloc(sizeof(char) * 7);
   sprintf_P(macros[1].seq, PSTR("h%ck%cu%c"), KEY_LEFT_ALT, KEY_F2, KEY_LEFT_ALT);
   //lentest(macros+1);
 }
@@ -145,6 +154,9 @@ void loop() {
 #ifdef LOOPTIMER
   idlecheck();
 #endif // LOOPTIMER
+#ifdef LIFETIME_KEYSTROKES
+  savecheck();
+#endif // LIFETIME_KEYSTROKES
 #ifdef WPM
   cpmproc();
 #endif // WPM

@@ -13,7 +13,7 @@
 #define KEY_DISUSED_3 31
 // 128-135 used by keyboard for key left and right modifiers
 // 136> are sent to the computer by subtracting 136 from them, explaining the odd layout of the key address space
-// FREE 137-175
+// MACROS 137-175
 // macros must be contiguous as usage indexes indexing is based on their keycode
 #define KEY_MACRO_1 137
 #define KEY_MACRO_2 138
@@ -37,7 +37,9 @@
 #define KEY_MACRO_20 156
 #define KEY_MACRO_MAX 156
 // 176-179 // in use by escape/return/bckspc
-// FREE 180-190
+// internal keys 180-190
+#define KEY_SHOW_KEYSTROKES 180
+#define KEY_SAVE_KEYSTROKES 181
 // 193-205 // low function keys and esc
 // 209-218 // 6 floating keys and arrow keys
 // 240-251 high function keys
@@ -45,6 +47,32 @@
 #include <avr/pgmspace.h> // methods and macros for accessing program space / flash memory
 #include "overlay.h"
 #include "macro.h"
+
+#ifdef LIFETIME_KEYSTROKES
+#include <EEPROM.h>
+unsigned long keystrokes = 0;
+void saveKeystrokes(bool disableSafety) {
+  unsigned long eepromKeystrokes = 0;
+  EEPROM.get(0, eepromKeystrokes);
+  if (keystrokes-eepromKeystrokes >= 5000 || disableSafety) {
+    EEPROM.put(0, keystrokes);
+  }
+  EEPROM.get(0, eepromKeystrokes);
+  log(F("Saving keystrokes"));
+}
+#define DAY_MS 86400000
+unsigned long nextUpdateMs = DAY_MS;
+void savecheck() {
+  unsigned long ms = millis();
+  if (ms > nextUpdateMs) {
+    saveKeystrokes(false);
+    nextUpdateMs = ms + DAY_MS;
+    if (nextUpdateMs < DAY_MS) { // wraparound check
+      nextUpdateMs = DAY_MS;
+    }
+  }
+}
+#endif // LIFETIME_KEYSTROKES
 
 Overlay* overlays = 0;
 short enableOverlay = 0;
@@ -69,21 +97,21 @@ void cpmlog() {
   for (short i = 0; i < 60; ++i) {
     total += keysPressed[i];
     if (total != 0) {
-       count += 1;
+      count += 1;
     }
   }
   char buf[50];
-  sprintf_P(buf, PSTR("cpm: %d wpm: %d"), total, total/5);
+  sprintf_P(buf, PSTR("cpm: %d wpm: %d"), total, total / 5);
   Serial.println(buf);
 }
 void cpmproc() {
   ms = millis();
-  diff = ms-lastMs;
+  diff = ms - lastMs;
   if (lastMs == 0) {
-    memset(keysPressed, 0, sizeof(unsigned char)*60);
+    memset(keysPressed, 0, sizeof(unsigned char) * 60);
     lastMs = ms;
   } else if (diff > SHIFT_THRESH) {
-    int ki = (diff/1000);
+    int ki = (diff / 1000);
     keyIndex += ki;
     keysPressed[keyIndex] = 0;
     if (keyIndex >= 60) {
@@ -103,62 +131,62 @@ void cpmdecrease() {
 #endif // WPM
 
 class Matrix {
-public:
-  void init(char* name, short cols, short rows) {
-    memset(this, 0, sizeof(Matrix));
-    this->name = name;
-    this->rowDriven = true;
-    this->columnCount = cols;
-    this->rowCount = rows;
-    this->columns = malloc(sizeof(char)*cols);
-    this->rows = malloc(sizeof(char)*rows);
-    memset(this->columns, -1, sizeof(char)*cols);
-    memset(this->rows, -1, sizeof(char)*rows);
-    this->keyset = malloc(sizeof(char)*rows*cols);
-    memset(this->keyset, 0, sizeof(char)*rows*cols);
-    this->overlayPressed = malloc(sizeof(char)*rows*cols);
-    memset(this->overlayPressed, 0, sizeof(char)*rows*cols);
-  }
+  public:
+    void init(char* name, short cols, short rows) {
+      memset(this, 0, sizeof(Matrix));
+      this->name = name;
+      this->rowDriven = true;
+      this->columnCount = cols;
+      this->rowCount = rows;
+      this->columns = malloc(sizeof(char) * cols);
+      this->rows = malloc(sizeof(char) * rows);
+      memset(this->columns, -1, sizeof(char)*cols);
+      memset(this->rows, -1, sizeof(char)*rows);
+      this->keyset = malloc(sizeof(char) * rows * cols);
+      memset(this->keyset, 0, sizeof(char)*rows * cols);
+      this->overlayPressed = malloc(sizeof(char) * rows * cols);
+      memset(this->overlayPressed, 0, sizeof(char)*rows * cols);
+    }
 
-  void setRemote() {
-  #ifdef IO_EXPANDER
-    this->remote = true;
-  #endif
-  }
-
-  #ifdef IO_EXPANDER
-  bool isRemote() {
-    return this->remote;
-  }
-  #endif
-
-  short getHighCount() {
-    return this->rowDriven ? this->rowCount : this->columnCount;
-  }
-
-  short getLowCount() {
-    return this->rowDriven ? this->columnCount : this->rowCount;
-  }
-
-  short getPos(char col, char row) {
-    return (col*this->rowCount)+row;
-  }
-
-  // don't edit these at runtime please
-  char* columns;
-  char* rows;
-  bool rowDriven;
-  const char* name;
-  unsigned char* keyset;
-  char* overlayPressed;
-  unsigned char keymap[MAX_COLS][MAX_ROWS];
-
-private:
-  short columnCount;
-  short rowCount;
+    void setRemote() {
 #ifdef IO_EXPANDER
-  // at the other end of MCP23017, use ioexp instead of digitalWrite directly
-  bool remote;
+      this->remote = true;
+#endif
+    }
+
+#ifdef IO_EXPANDER
+    bool isRemote() {
+      return this->remote;
+    }
+#endif
+
+    short getHighCount() {
+      return this->rowDriven ? this->rowCount : this->columnCount;
+    }
+
+    short getLowCount() {
+      return this->rowDriven ? this->columnCount : this->rowCount;
+    }
+
+    short getPos(char col, char row) {
+      return (col * this->rowCount) + row;
+    }
+
+    // don't edit these at runtime please
+    char* columns;
+    char* rows;
+    bool rowDriven;
+    const char* name;
+    unsigned char* keyset;
+    char* overlayPressed;
+    unsigned char keymap[MAX_COLS][MAX_ROWS];
+
+  private:
+    short columnCount;
+    short rowCount;
+#ifdef IO_EXPANDER
+    // at the other end of MCP23017, use ioexp instead of digitalWrite directly
+    bool remote;
 #endif // IO_EXPANDER
 };
 
@@ -181,11 +209,19 @@ void configure_matrix(Matrix* m) {
 }
 
 #include <Mouse.h>
+// handles special overrides for keys. overlays modifying keys is handled in pressKey
 void pressKeyImpl(unsigned char key) {
-  if (key == KEY_MOUSE_LEFT) {
-    Mouse.click();
+#ifdef LIFETIME_KEYSTROKES
+  keystrokes += 1;
+  if (key == KEY_SHOW_KEYSTROKES) {
+    Serial.print(F("lifetime keystrokes: "));
+    Serial.print(keystrokes, DEC);
+    Serial.println("");
     return;
+  } else if (key == KEY_SAVE_KEYSTROKES) {
+    saveKeystrokes(true);
   }
+#endif // LIFETIME_KEYSTROKES
 #ifdef WPM
   if (key == KEY_BACKSPACE) {
     cpmdecrease();
@@ -193,6 +229,22 @@ void pressKeyImpl(unsigned char key) {
     cpmincrease();
   }
 #endif // WPM
+  if (key == KEY_MOUSE_LEFT) {
+    Mouse.click();
+    return;
+  }
+  if (key >= KEY_MACRO_1 && key <= KEY_MACRO_MAX) {
+    key -= KEY_MACRO_1;
+    log(F("macro key pressed for index %d"), key);
+    macros[key].execute();
+    return;
+  }
+  if (key == KEY_OVERLAY_1) {
+    // enable this overlay
+    enableOverlay = key;
+    log(F("enable overlay %d"), enableOverlay);
+    return;
+  }
 #ifdef REAL_KEYBOARD
   Keyboard.press(key);
 #endif
@@ -205,27 +257,14 @@ void pressKey(Matrix* m, short matrixIndex, short col, short row) {
     if (overlayKey > 0) {
       log(F("overlay: key: %d %d, %d for matrix %s"), overlayKey, col, row, m->name);
       m->overlayPressed[m->getPos(col, row)] = enableOverlay;
-      if (overlayKey >= KEY_MACRO_1 && overlayKey <= KEY_MACRO_MAX) {
-        overlayKey -= KEY_MACRO_1;
-        log(F("macro key pressed for index %d"), overlayKey);
-        macros[overlayKey].execute();
-      } else {
-        pressKeyImpl(overlayKey);
-      }
+      pressKeyImpl(overlayKey);
       return;
     } else {
       log(F("no overlay (%d enabled): %d, %d overlaykey %d for matrix %s"), enableOverlay, col, row, overlayKey, m->name);
       //return; // suppress fallthrough keypresses when the overlay isn't bound to fix confusing keypress issues
     }
   }
-  unsigned char key = m->keymap[col][row];
-  if (key == KEY_OVERLAY_1) {
-    // enable this overlay
-    enableOverlay = key;
-    log(F("enable overlay %d"), enableOverlay);
-    return;
-  }
-  pressKeyImpl(key);
+  pressKeyImpl(m->keymap[col][row]);
 }
 
 void unpressKeyImpl(char key) {
@@ -245,7 +284,7 @@ void remoteIoFailed() {
 #ifdef WATCHDOG_ENABLED
   Serial.println(F(" system halt!"));
   wdt_enable(WDTO_15MS);
-  while(1) {
+  while (1) {
     delay(1);
   }
 #else
@@ -284,7 +323,7 @@ inline bool readPin(short pin, Matrix* m) {
     return !digitalRead(pin);
   }
 #else
-    return !digitalRead(pin);
+  return !digitalRead(pin);
 #endif // IO_EXPANDER
 }
 
@@ -319,7 +358,7 @@ void processOne(Matrix* m, short matrixIndex, short index) {
   pinMode(high[index], OUTPUT);
   digitalWrite(high[index], LOW);
 #endif // IO_EXPANDER
-  
+
   // Prepare to read rows and act on col/row lookups
   short column = index;
   short row = index; // will be corrected in loop
@@ -365,9 +404,9 @@ void processOne(Matrix* m, short matrixIndex, short index) {
       // Only unpress a key if it's been held long enough (swap this if keys ghost a lot)
     } else if ((m->keyset[m->getPos(column, row)] > MAGIC_DEBOUNCE_NUMBER)
 #ifdef IO_EXPANDER
-    || (m->keyset[m->getPos(column, row)]>0&&m->isRemote())
+               || (m->keyset[m->getPos(column, row)] > 0 && m->isRemote())
 #endif // IO_EXPANDER
-    ) {
+              ) {
 #ifdef DEBUG_RELEASE
       log(F("key release: %d, %d allread %u for matrix %s"), column, row, allRows, m->name);
 #endif // DEBUG_RELEASE
@@ -383,7 +422,7 @@ void processOne(Matrix* m, short matrixIndex, short index) {
     pinMode(high[index], INPUT);
   }
 #else
-    pinMode(high[index], INPUT);
+  pinMode(high[index], INPUT);
 #endif // IO_EXPANDER
 }
 

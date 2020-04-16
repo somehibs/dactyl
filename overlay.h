@@ -51,11 +51,14 @@ Overlay* overlay_main(Overlay* a) {
   a->keymap[M_LEFT_MAIN][2][2] = KEY_DELETE;
   a->keymap[M_LEFT_MAIN][3][2] = KEY_END;
   a->keymap[M_LEFT_MAIN][4][2] = KEY_PAGE_DOWN;
+  a->keymap[M_LEFT_MAIN][5][2] = KEY_SHOW_KEYSTROKES;
   // reverse arrow keys
-  a->keymap[M_LEFT_MAIN][2][3] = KEY_LEFT_ARROW;
-  a->keymap[M_LEFT_MAIN][3][3] = KEY_DOWN_ARROW;
-  a->keymap[M_LEFT_MAIN][4][3] = KEY_UP_ARROW;
-  a->keymap[M_LEFT_MAIN][5][3] = KEY_RIGHT_ARROW;
+  a->keymap[M_LEFT_MAIN][2][3] = 0;
+  a->keymap[M_LEFT_MAIN][3][3] = 0;
+  a->keymap[M_LEFT_MAIN][4][3] = 0;
+  a->keymap[M_LEFT_MAIN][5][3] = 0;
+  
+  a->keymap[M_LEFT_MAIN][0][4] = KEY_SAVE_KEYSTROKES;
 
   // convert backspace to return when overlay is enabled
   a->keymap[M_LEFT_THUMB][1][1] = KEY_RETURN;
