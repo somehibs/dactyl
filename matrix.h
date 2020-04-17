@@ -41,6 +41,7 @@
 #define KEY_SHOW_KEYSTROKES 180
 #define KEY_SAVE_KEYSTROKES 181
 // 193-205 // low function keys and esc
+#define KEY_PRINT_SCREEN 206
 // 209-218 // 6 floating keys and arrow keys
 // 240-251 high function keys
 
@@ -280,6 +281,9 @@ void unpressKeyImpl(char key) {
 #include <avr/wdt.h>
 #endif
 void remoteIoFailed() {
+#ifdef LIFETIME_KEYSTROKES
+  saveKeystrokes(false);
+#endif // LIFETIME_KEYSTROKES
   Serial.write(F("Bad remote IO call reply"));
 #ifdef WATCHDOG_ENABLED
   Serial.println(F(" system halt!"));

@@ -56,7 +56,7 @@ Overlay* overlay_main(Overlay* a) {
   a->keymap[M_LEFT_MAIN][2][3] = 0;
   a->keymap[M_LEFT_MAIN][3][3] = 0;
   a->keymap[M_LEFT_MAIN][4][3] = 0;
-  a->keymap[M_LEFT_MAIN][5][3] = 0;
+  a->keymap[M_LEFT_MAIN][5][3] = KEY_PRINT_SCREEN;
   
   a->keymap[M_LEFT_MAIN][0][4] = KEY_SAVE_KEYSTROKES;
 

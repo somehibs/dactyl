@@ -37,7 +37,7 @@
 // max matrixes to include
 const short MATRIX_COUNT = 4;
 // current firmware version
-const char* VERSION = "1.2.0.0";
+const char* VERSION = "1.2.0.1";
 
 #ifdef WATCHDOG_ENABLED
 #include <avr/wdt.h>
@@ -101,6 +101,7 @@ void setup() {
   Serial.println(F("Startup complete."));
 #ifdef LIFETIME_KEYSTROKES
   EEPROM.get(0, keystrokes);
+  //keystrokes += 40000; // lost rewriting firmware-
 #endif // LIFETIME_KEYSTROKES
 }
 
