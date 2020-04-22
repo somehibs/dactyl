@@ -56,20 +56,21 @@ void saveKeystrokes(bool disableSafety) {
   unsigned long eepromKeystrokes = 0;
   EEPROM.get(0, eepromKeystrokes);
   if (keystrokes-eepromKeystrokes >= 5000 || disableSafety) {
+    Serial.println(F("Saving keystrokes"));
     EEPROM.put(0, keystrokes);
+  } else {
+    Serial.println(F("Keystroke save suppressed"));
   }
-  EEPROM.get(0, eepromKeystrokes);
-  log(F("Saving keystrokes"));
 }
-#define DAY_MS 86400000
-unsigned long nextUpdateMs = DAY_MS;
+#define HOUR_MS 3600000
+unsigned long nextUpdateMs = HOUR_MS;
 void savecheck() {
   unsigned long ms = millis();
   if (ms > nextUpdateMs) {
     saveKeystrokes(false);
-    nextUpdateMs = ms + DAY_MS;
-    if (nextUpdateMs < DAY_MS) { // wraparound check
-      nextUpdateMs = DAY_MS;
+    nextUpdateMs = ms + HOUR_MS;
+    if (nextUpdateMs < HOUR_MS) { // wraparound check
+      nextUpdateMs = HOUR_MS;
     }
   }
 }
@@ -221,6 +222,7 @@ void pressKeyImpl(unsigned char key) {
     return;
   } else if (key == KEY_SAVE_KEYSTROKES) {
     saveKeystrokes(true);
+    return;
   }
 #endif // LIFETIME_KEYSTROKES
 #ifdef WPM

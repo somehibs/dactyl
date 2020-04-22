@@ -10,7 +10,7 @@
 // key release log
 //#define DEBUG_RELEASE
 // how long it takes to run each loop and how much memory is currently between heap and stack
-#define LOOPTIMER
+//#define LOOPTIMER
 #endif // DEBUG
 
 // wdt_enable in loop() will prevent the system from being reprogrammed without a reset
@@ -37,7 +37,7 @@
 // max matrixes to include
 const short MATRIX_COUNT = 4;
 // current firmware version
-const char* VERSION = "1.2.0.1";
+const char* VERSION = "1.2.0.3";
 
 #ifdef WATCHDOG_ENABLED
 #include <avr/wdt.h>
@@ -101,7 +101,6 @@ void setup() {
   Serial.println(F("Startup complete."));
 #ifdef LIFETIME_KEYSTROKES
   EEPROM.get(0, keystrokes);
-  //keystrokes += 40000; // lost rewriting firmware-
 #endif // LIFETIME_KEYSTROKES
 }
 
