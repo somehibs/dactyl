@@ -53,7 +53,7 @@ Matrix thumb_matrix_right() {
   a.columns[0] = 18;
   a.columns[1] = 15;
   a.columns[2] = 14;
-  a.keymap[0][0] = KEY_RIGHT_ALT;
+  a.keymap[0][0] = KEY_LEFT_GUI;//KEY_RIGHT_ALT;
   a.keymap[0][1] = KEY_OVERLAY_1;
   a.keymap[1][0] = KEY_RIGHT_SHIFT;
   a.keymap[1][1] = KEY_RETURN;
@@ -79,7 +79,7 @@ Matrix main_matrix_left() {
   a.keymap[0][0] = '`';
   a.keymap[0][1] = KEY_TAB;
   a.keymap[0][2] = KEY_ESC;
-  a.keymap[0][3] = KEY_LEFT_SHIFT;
+  a.keymap[0][3] = KEY_LEFT_ALT;//KEY_LEFT_SHIFT;
   a.keymap[0][4] = KEY_LEFT_GUI;
   a.keymap[1][0] = '1';
   a.keymap[1][1] = 'q';
@@ -120,7 +120,7 @@ Matrix thumb_matrix_left() { // alt, space, shift, dunno top right three yet
   a.columns[2] = 7;
   a.keymap[1][0] = KEY_LEFT_SHIFT;
   a.keymap[0][1] = KEY_OVERLAY_1;
-  a.keymap[0][0] = KEY_LEFT_ALT;
+  a.keymap[0][0] = KEY_LEFT_GUI;//;
   a.keymap[1][1] = KEY_BACKSPACE;
   a.keymap[2][0] = KEY_LEFT_CTRL;
   a.keymap[2][1] = ' ';

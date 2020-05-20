@@ -10,7 +10,7 @@
 // key release log
 //#define DEBUG_RELEASE
 // how long it takes to run each loop and how much memory is currently between heap and stack
-//#define LOOPTIMER
+#define LOOPTIMER
 #endif // DEBUG
 
 // wdt_enable in loop() will prevent the system from being reprogrammed without a reset
@@ -137,7 +137,7 @@ void idlecheck() {
   unsigned long ms = millis();
   if (ms - lastReport > 1000) {
     lastReport = ms;
-    freeMemory();
+    //freeMemory();
     log(F("loop: %d"), (ms - lastLoop));
   }
   lastLoop = ms;
