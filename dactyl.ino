@@ -1,10 +1,20 @@
+// switch between keyboards with this one
+//#define REGULAR
+#define TEST_BOARD
+
+
+
+
+
 // useful if you have more than one half to a keyboard
 // intentionally defined to allow users to use only the arduino and remove any code/memory usage from using mcp io expander
+#ifdef REGULAR
 #define IO_EXPANDER
+#endif // REGULAR
 
 // debug flag, call log() as you would serial.printf
 // when debug is undefined, log() will turn into an empty inline method and the compiler will remove 3kb of debug code+strings from memory
-//#define DEBUG true
+#define DEBUG true
 #ifdef DEBUG
 // features that depend on debug to work anyway
 // key release log
@@ -19,7 +29,11 @@
 // debug disables this to make it easy to program
 // remember not to spend more than 250ms thinking in the processing loop or *boom*
 #ifndef DEBUG
+#ifdef IO_EXPANDER
+#ifdef REGULAR
 #define WATCHDOG_ENABLED
+#endif // regular enable
+#endif // ioexp emable
 #endif // DEBUG
 
 // record lifetime keystrokes in eeprom.
@@ -32,10 +46,16 @@
 //#define WPM
 
 // comment out to disable keyboard actions. keyboard header still necessary for various key definitions
+#ifdef REGULAR
 #define REAL_KEYBOARD
+#endif // REGULAR
 
 // max matrixes to include
+#ifdef REGULAR
 const short MATRIX_COUNT = 4;
+#else
+const short MATRIX_COUNT = 1;
+#endif // REGULAR
 // current firmware version
 const char* VERSION = "1.2.0.3";
 
@@ -75,12 +95,13 @@ Matrix matricies[MATRIX_COUNT];
 Overlay myOverlays[1];
 
 void setup() {
+  Serial.begin(9600);
 #ifdef WATCHDOG_ENABLED
   MCUSR = 0;
   wdt_disable();
 #endif // WATCHDOG_ENABLED
 #ifdef IO_EXPANDER
-  Serial.begin(9600);
+  //while(!Serial);
   while (!ioexp.begin()) {
     Serial.print(F("Could not init left deck (FW: "));
     Serial.write(VERSION);
@@ -95,7 +116,8 @@ void setup() {
 #ifdef REAL_KEYBOARD
   Keyboard.begin();
 #endif // REAL_KEYBOARD
-  init_matrix();
+  //init_matrix();
+  init_test_matrix();
   init_overlay();
   init_macros();
   Serial.println(F("Startup complete."));
@@ -104,7 +126,12 @@ void setup() {
 #endif // LIFETIME_KEYSTROKES
 }
 
+void init_test_matrix() {
+  matricies[0] = test_board_matrix();
+}
+
 void init_matrix() {
+  return;
   matricies[M_RIGHT_MAIN] = main_matrix_right();
   matricies[M_RIGHT_THUMB] = thumb_matrix_right();
   matricies[M_LEFT_MAIN] = main_matrix_left();

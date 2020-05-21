@@ -1,3 +1,20 @@
+Matrix test_board_matrix() {
+  Matrix a;
+  a.init("test_board", 5, 5);
+  a.rows[0] = 2; // TX0
+  a.rows[1] = 3; // RX1
+  a.rows[2] = 4;
+  a.rows[3] = 5;
+  a.rows[4] = 6;
+  a.columns[0] = 14;
+  a.columns[1] = 10;
+  a.columns[2] = 0;
+  a.columns[3] = 9;
+  a.columns[4] = 8;
+  return a;
+}
+
+
 Matrix main_matrix_right() {
   Matrix a;
   a.init("main_right", 6, 5);

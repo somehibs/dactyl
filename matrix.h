@@ -401,7 +401,7 @@ void processOne(Matrix* m, short matrixIndex, short index) {
         log(F("keypress: %d, %d allread %u for matrix %s"), column, row, allRows, m->name);
         pressKey(m, matrixIndex, column, row);
       } else if (m->keymap[column][row] == 0) {
-        log(F("Could not read key for col %d and row %d for matrix %s"), column, row, m->name);
+        //log(F("Could not read key for col %d and row %d for matrix %s"), column, row, m->name);
       } else {
 #ifdef VERBOSE
         log(F("pos %d %d c %d mx %s"), column, row, m->keyset[keysetPos], m->name);
