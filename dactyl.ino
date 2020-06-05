@@ -15,6 +15,7 @@
 // debug flag, call log() as you would serial.printf
 // when debug is undefined, log() will turn into an empty inline method and the compiler will remove 3kb of debug code+strings from memory
 #define DEBUG true
+//#define VERBOSE
 #ifdef DEBUG
 // features that depend on debug to work anyway
 // key release log
@@ -43,12 +44,10 @@
 #define LIFETIME_KEYSTROKES
 
 // wpm over last 60s. no storage or stats
-//#define WPM
+#define WPM
 
 // comment out to disable keyboard actions. keyboard header still necessary for various key definitions
-#ifdef REGULAR
 #define REAL_KEYBOARD
-#endif // REGULAR
 
 // max matrixes to include
 #ifdef REGULAR
@@ -57,7 +56,7 @@ const short MATRIX_COUNT = 4;
 const short MATRIX_COUNT = 1;
 #endif // REGULAR
 // current firmware version
-const char* VERSION = "1.2.0.3";
+const char* VERSION = "1.2.0.7";
 
 #ifdef WATCHDOG_ENABLED
 #include <avr/wdt.h>
@@ -73,7 +72,7 @@ void log(const __FlashStringHelper* fmt, ...) {
   va_start(argp, fmt);
   vsnprintf_P(debugBuffer, 128, (PGM_P)fmt, argp);
   va_end(argp);
-  Serial.println(debugBuffer);
+  if(Serial)Serial.println(debugBuffer);
 }
 // memory layout on this is a little more predictable
 int freeMemory() {
@@ -94,8 +93,11 @@ inline void log(const __FlashStringHelper* _, ...) {}
 Matrix matricies[MATRIX_COUNT];
 Overlay myOverlays[1];
 
+const char* instructions = "Hold T and E at the same time to change between simple keyboard and key information mode.";
+
 void setup() {
-  Serial.begin(9600);
+  //Serial.begin(9600);
+  //while(!Serial);
 #ifdef WATCHDOG_ENABLED
   MCUSR = 0;
   wdt_disable();
@@ -103,9 +105,9 @@ void setup() {
 #ifdef IO_EXPANDER
   //while(!Serial);
   while (!ioexp.begin()) {
-    Serial.print(F("Could not init left deck (FW: "));
-    Serial.write(VERSION);
-    Serial.println(")");
+    if(Serial)Serial.print(F("Could not init left deck (FW: "));
+    if(Serial)Serial.write(VERSION);
+    if(Serial)Serial.println(")");
     delay(750);
   }
 #else
@@ -118,9 +120,10 @@ void setup() {
 #endif // REAL_KEYBOARD
   //init_matrix();
   init_test_matrix();
-  init_overlay();
+  //init_overlay();
   init_macros();
-  Serial.println(F("Startup complete."));
+    if(Serial)Serial.write(VERSION);
+  if(Serial)Serial.println(F(" startup complete."));
 #ifdef LIFETIME_KEYSTROKES
   EEPROM.get(0, keystrokes);
 #endif // LIFETIME_KEYSTROKES
@@ -128,6 +131,10 @@ void setup() {
 
 void init_test_matrix() {
   matricies[0] = test_board_matrix();
+  for (int i = 0; i < MATRIX_COUNT; i++) {
+    Matrix* m = matricies + i;
+    configure_matrix(m);
+  }
 }
 
 void init_matrix() {
@@ -164,12 +171,14 @@ void idlecheck() {
   unsigned long ms = millis();
   if (ms - lastReport > 1000) {
     lastReport = ms;
-    //freeMemory();
+    freeMemory();
     log(F("loop: %d"), (ms - lastLoop));
   }
   lastLoop = ms;
 }
 #endif // LOOPTIMER
+
+bool instruct = false;
 
 void loop() {
 #ifdef WATCHDOG_ENABLED
@@ -177,6 +186,12 @@ void loop() {
 #endif // WATCHDOG_ENABLED
   for (short xi = 0; xi < MATRIX_COUNT; ++xi) {
     process(matricies + xi, xi);
+  }
+  if (!instruct) {
+    delay(2000);
+    if(Serial)Serial.println(F("instructing"));
+    Keyboard.write(instructions, strlen(instructions));
+    instruct = true;
   }
 #ifdef LOOPTIMER
   idlecheck();

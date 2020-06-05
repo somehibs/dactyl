@@ -56,10 +56,10 @@ void saveKeystrokes(bool disableSafety) {
   unsigned long eepromKeystrokes = 0;
   EEPROM.get(0, eepromKeystrokes);
   if (keystrokes-eepromKeystrokes >= 5000 || disableSafety) {
-    Serial.println(F("Saving keystrokes"));
+    if(Serial)Serial.println(F("Saving keystrokes"));
     EEPROM.put(0, keystrokes);
   } else {
-    Serial.println(F("Keystroke save suppressed"));
+    if(Serial)Serial.println(F("Keystroke save suppressed"));
   }
 }
 #define HOUR_MS 3600000
@@ -104,7 +104,7 @@ void cpmlog() {
   }
   char buf[50];
   sprintf_P(buf, PSTR("cpm: %d wpm: %d"), total, total / 5);
-  Serial.println(buf);
+  if(Serial)Serial.println(buf);
 }
 void cpmproc() {
   ms = millis();
@@ -156,11 +156,13 @@ class Matrix {
 #endif
     }
 
-#ifdef IO_EXPANDER
     bool isRemote() {
+#ifdef IO_EXPANDER
       return this->remote;
-    }
+      #else
+      return false;
 #endif
+    }
 
     short getHighCount() {
       return this->rowDriven ? this->rowCount : this->columnCount;
@@ -216,9 +218,9 @@ void pressKeyImpl(unsigned char key) {
 #ifdef LIFETIME_KEYSTROKES
   keystrokes += 1;
   if (key == KEY_SHOW_KEYSTROKES) {
-    Serial.print(F("lifetime keystrokes: "));
-    Serial.print(keystrokes, DEC);
-    Serial.println("");
+    if(Serial)Serial.print(F("lifetime keystrokes: "));
+    if(Serial)Serial.print(keystrokes, DEC);
+    if(Serial)Serial.println("");
     return;
   } else if (key == KEY_SAVE_KEYSTROKES) {
     saveKeystrokes(true);
@@ -252,8 +254,15 @@ void pressKeyImpl(unsigned char key) {
   Keyboard.press(key);
 #endif
 }
-
+bool hottoggle = true;
+void hotproc(short col, short row);
+void hotprocup(short col, short row);
+void hotprocdown(short col, short row);
 void pressKey(Matrix* m, short matrixIndex, short col, short row) {
+  hotprocup(col, row);
+  if (hottoggle) {
+    hotproc(col, row);
+  }
   if (enableOverlay != 0) {
     // if this isnt handled, let the original key go through
     unsigned char overlayKey = overlays[enableOverlay - 1].keymap[matrixIndex][col][row];
@@ -286,19 +295,20 @@ void remoteIoFailed() {
 #ifdef LIFETIME_KEYSTROKES
   saveKeystrokes(false);
 #endif // LIFETIME_KEYSTROKES
-  Serial.write(F("Bad remote IO call reply"));
+  if(Serial)Serial.write(F("Bad remote IO call reply"));
 #ifdef WATCHDOG_ENABLED
-  Serial.println(F(" system halt!"));
+  if(Serial)Serial.println(F(" system halt!"));
   wdt_enable(WDTO_15MS);
   while (1) {
     delay(1);
   }
 #else
-  Serial.println(F(" watchdog disabled - no action"));
+  if(Serial)Serial.println(F(" watchdog disabled - no action"));
 #endif
 }
 
 void unpressKey(Matrix* m, short matrixIndex, short col, short row) {
+  hotprocdown(col, row);
   if (m->overlayPressed[m->getPos(col, row)] != 0) {
     // unpress overlay key instead
     short overlay = m->overlayPressed[m->getPos(col, row)];
@@ -401,10 +411,10 @@ void processOne(Matrix* m, short matrixIndex, short index) {
         log(F("keypress: %d, %d allread %u for matrix %s"), column, row, allRows, m->name);
         pressKey(m, matrixIndex, column, row);
       } else if (m->keymap[column][row] == 0) {
-        //log(F("Could not read key for col %d and row %d for matrix %s"), column, row, m->name);
+        log(F("Could not read key for col %d and row %d for matrix %s"), column, row, m->name);
       } else {
 #ifdef VERBOSE
-        log(F("pos %d %d c %d mx %s"), column, row, m->keyset[keysetPos], m->name);
+        log(F("pos %d %d c %d mx %s r %d d %d"), column, row, m->keyset[keysetPos], m->name, low[i], high[index]);
 #endif
       }
       // Only unpress a key if it's been held long enough (swap this if keys ghost a lot)
@@ -438,6 +448,141 @@ void process(Matrix* m, short matrixIndex) {
   for (short i = 0; i < matrixMax; ++i) {
     processOne(m, matrixIndex, i);
   }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+char* newline = "/ ";
+char* sp = " ";
+
+#define NAME_MAX 15
+class Keyswitch {
+  char* manufacturer;
+  char* type;
+  char name[NAME_MAX];
+  char pressure;
+  char activation;
+
+  public:
+  Keyswitch() {
+    
+  }
+  Keyswitch(char* manufacturer, char* type, const __FlashStringHelper* name, char pressure, char activationNm) {
+    this->type = type;
+    this->manufacturer = manufacturer;
+    vsnprintf_P(this->name, NAME_MAX, (PGM_P)name, 0);
+    this->pressure = pressure;
+    this->activation = activationNm;
+  }
+  void write() {
+    keywrite("\r\n");
+    keywrite(manufacturer);
+    keywrite(sp);
+    keywrite(this->name);
+    keywrite(sp);
+    keywrite(" - ");
+    keywrite(this->type);
+    keywrite(sp);
+    keywrite(newline);
+    
+    keywrite("Force: ");
+    char buf[25];
+    sprintf(buf, "%d", pressure);
+    keywrite(buf);
+    keywrite("cN");
+    keywrite(sp);
+    keywrite(newline);
+
+    keywrite("Activation: ");
+    dtostrf(this->activation/10.0f, 2, 1, buf);
+    keywrite(buf);
+    keywrite("mm");
+    keywrite(sp);
+    keywrite(newline);
+    
+    keywrite("Key: ");
+  }
+  void keywrite(char* s) {
+    Keyboard.write(s, strlen(s));
+  }
+};
+
+Keyswitch look[5][5];
+char* gateron = "Gateron";
+char* kailh = "Kailh";
+char* cherry = "Cherry MX";
+char* linear = "Linear";
+char* tactile = "Tactile";
+char* clicky = "Clicky";
+
+
+bool initswitched=false;
+void initswitch() {
+  look[0][0] = Keyswitch(gateron, linear, F("Clear"), 35, 20);
+  look[1][0] = Keyswitch(kailh, linear, F("Box Red"), 45, 18);
+  look[2][0] = Keyswitch(gateron, linear, F("Red"), 45, 20);
+  look[3][0] = Keyswitch(cherry, linear, F("Red"), 45, 20);
+  look[4][0] = Keyswitch(gateron, linear, F("Silent Black"), 50, 20);
+  look[0][1] = Keyswitch(kailh, linear, F("Box Black"), 60, 18);
+  look[1][1] = Keyswitch(cherry, linear, F("Silent Black"), 60, 19);
+  //look[2][1] = Keyswitch(gateron, linear, F("Red"), 35, 2);
+  look[3][1] = Keyswitch(kailh, tactile, F("Box Brown"), 45, 18);
+  look[4][1] = Keyswitch(gateron, tactile, F("Brown"), 45, 20);
+  look[0][2] = Keyswitch(kailh, tactile, F("Purple"), 50, 17);
+  look[1][2] = Keyswitch(cherry, tactile, F("Brown"), 55, 20);
+  look[2][2] = Keyswitch(cherry, tactile, F("Clear"), 65, 20);
+  look[3][2] = Keyswitch(kailh, tactile, F("Speed Copper"), 40, 11);
+  look[4][2] = Keyswitch(cherry, tactile, F("Grey"), 80, 20);
+  look[0][3] = Keyswitch(kailh, clicky, F("Box White"), 45, 18);
+  look[1][3] = Keyswitch(cherry, clicky, F("Blue"), 60, 22);
+  look[2][3] = Keyswitch(gateron, clicky, F("Blue"), 60, 23);
+  look[3][3] = Keyswitch(cherry, clicky, F("Green"), 80, 22);
+  look[4][3] = Keyswitch(gateron, clicky, F("Green"), 80, 24);
+  look[0][4] = Keyswitch(cherry, clicky, F("White"), 80, 22);
+  look[2][4] = Keyswitch(cherry, tactile, F("Grey"), 80, 20);
+  look[3][4] = Keyswitch(kailh, linear, F("Speed Silver"), 40, 11);
+  look[4][4] = Keyswitch(kailh, tactile, F("Speed Copper"), 40, 11);
+  initswitched=true;
+}
+
+bool en1 = false;
+bool en2 = false;
+void hotprocdown(short col, short row) {
+  if (col == 0 && row == 4) {
+    en1 = false;
+  }
+  if (col == 4 && row == 0) {
+    en2 = false;
+  }
+}
+
+void hotprocup(short col, short row) {
+  if (col == 0 && row == 4) {
+    en1 = true;
+  }
+  if (col == 4 && row == 0) {
+    en2 = true;
+  }
+  if (en1 && en2) {
+    hottoggle = !hottoggle;
+  }
+}
+
+void hotproc(short col, short row) {
+  if (!initswitched) {
+    initswitch();
+  }
+  look[col][row].write();
 }
 
 #endif // __MATRIX_H__

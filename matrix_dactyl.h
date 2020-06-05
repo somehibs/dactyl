@@ -1,16 +1,42 @@
 Matrix test_board_matrix() {
   Matrix a;
   a.init("test_board", 5, 5);
+  short offone = 1;
   a.rows[0] = 2; // TX0
   a.rows[1] = 3; // RX1
   a.rows[2] = 4;
   a.rows[3] = 5;
   a.rows[4] = 6;
-  a.columns[0] = 14;
-  a.columns[1] = 10;
-  a.columns[2] = 0;
+  a.columns[0] = 10;
+  a.columns[1] = 14;
+  a.columns[2] = 15;
   a.columns[3] = 9;
   a.columns[4] = 8;
+  a.keymap[0][0] = 'a';
+  a.keymap[1][0] = 'b';
+  a.keymap[2][0] = 'c';
+  a.keymap[3][0] = 'd';
+  a.keymap[4][0] = 'e'; // actually the space bar
+  a.keymap[0][1] = 'f';
+  a.keymap[1][1] = 'g';
+  a.keymap[2][1] = ' ';
+  a.keymap[3][1] = 'i'-offone;
+  a.keymap[4][1] = 'j'-offone; // actually the space bar
+  a.keymap[0][2] = 'k'-offone;
+  a.keymap[1][2] = 'l'-offone;
+  a.keymap[2][2] = 'm'-offone;
+  a.keymap[3][2] = 'n'-offone;
+  a.keymap[4][2] = 'o'-offone; // actually the space bar
+  a.keymap[0][3] = 'p'-offone;
+  a.keymap[1][3] = 'q'-offone;
+  a.keymap[2][3] = 'r'-offone;
+  a.keymap[3][3] = 's'-offone;
+  a.keymap[4][3] = 't'-offone; // actually the space bar
+  a.keymap[0][4] = 'u'-offone;
+  a.keymap[1][4] = 'v'-offone-offone;
+  a.keymap[2][4] = 'x'-offone-offone-offone;
+  a.keymap[3][4] = 'y'-offone-offone-offone;
+  a.keymap[4][4] = 'z'-offone-offone-offone; // actually the space bar
   return a;
 }
 
